@@ -1,0 +1,1017 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { snippets } from "../data/snippets";
+import { categories } from "../data/categories";
+import Sidebar from "../components/Sidebar.astro";
+---
+
+<BaseLayout
+  title="Search — XVault"
+  description="Search the XVault code snippet library."
+>
+  <div class="app-shell">
+    <Sidebar
+      categories={categories.slice(1)}
+      snippetCount={snippets.length}
+      currentPath={Astro.url.pathname}
+    />
+
+    <main class="search-page">
+      <header class="search-topbar">
+        <a href="/" class="search-back">← Back to library</a>
+        <span class="search-label">XVAULT / SEARCH</span>
+      </header>
+
+      <section class="search-heading">
+        <span class="search-eyebrow">FIND A REFERENCE / 001</span>
+        <h1>Search the <span>vault.</span></h1>
+        <p>
+          Search across snippet titles, descriptions, languages, categories, and
+          code.
+        </p>
+      </section>
+
+      <div class="global-search-box">
+        <span aria-hidden="true">⌕</span>
+        <input
+          id="global-search"
+          type="search"
+          placeholder="Try fetch, array, PHP, SQL..."
+          aria-label="Search all snippets"
+          autofocus
+        />
+        <kbd class="search-shortcut">
+          <span>/</span> TO SEARCH
+        </kbd>
+      </div>
+      <div class="search-filters">
+        <div class="search-filter-group">
+          <label for="language-filter">LANGUAGE</label>
+          <select id="language-filter">
+            <option value="all">All languages</option>
+            {
+              categories
+                .filter((category) => category !== "All")
+                .map((category) => (
+                  <option value={category.toLowerCase()}>{category}</option>
+                ))
+            }
+          </select>
+        </div>
+
+        <div class="search-filter-group">
+          <label for="category-filter">CATEGORY</label>
+          <select id="category-filter">
+            <option value="all">All categories</option>
+            {
+              [...new Set(snippets.map((snippet) => snippet.category))]
+                .sort()
+                .map((category) => (
+                  <option value={category.toLowerCase()}>{category}</option>
+                ))
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="search-sort">
+        <label for="sort-filter">SORT BY</label>
+        <select id="sort-filter">
+          <option value="default">Default order</option>
+          <option value="title">Title (A–Z)</option>
+          <option value="language">Language (A–Z)</option>
+        </select>
+      </div>
+
+      <button id="reset-search-filters" type="button"> Reset filters ↺ </button>
+
+      <section class="recent-searches" id="recent-searches" hidden>
+        <div class="recent-searches-header">
+          <span>RECENT SEARCHES</span>
+          <button id="clear-search-history" type="button">
+            Clear history
+          </button>
+        </div>
+
+        <div class="recent-searches-list" id="recent-searches-list"></div>
+      </section>
+
+      <div class="search-results-header">
+        <span id="results-count">All snippets</span>
+        <span>LIBRARY INDEX</span>
+      </div>
+
+      <div class="search-results" id="search-results">
+        {
+          snippets.map((snippet, index) => (
+            <div
+              class="search-result"
+              data-search={`${snippet.title} ${snippet.description} ${snippet.language} ${snippet.category} ${snippet.code}`.toLowerCase()}
+              data-language={snippet.language.toLowerCase()}
+              data-category={snippet.category.toLowerCase()}
+            >
+              <span class="result-index">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+
+              <a class="result-main" href={`/snippets/${snippet.slug}`}>
+                <strong>{snippet.title}</strong>
+                <span>{snippet.description}</span>
+              </a>
+
+              <span class="result-language">{snippet.language}</span>
+
+              <button
+                class="search-bookmark"
+                type="button"
+                data-bookmark={snippet.slug}
+                aria-label={`Bookmark ${snippet.title}`}
+                aria-pressed="false"
+                title="Bookmark snippet"
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-4-6 4V4.75Z"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <a
+                class="result-arrow"
+                href={`/snippets/${snippet.slug}`}
+                aria-label={`View ${snippet.title}`}
+              >
+                ↗
+              </a>
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="search-empty" id="search-empty" hidden>
+        <span>✳</span>
+        <h2>No matching snippets.</h2>
+        <p>Try another keyword or search by programming language.</p>
+      </div>
+    </main>
+  </div>
+</BaseLayout>
+
+<script>
+  const searchInput =
+    document.querySelector<HTMLInputElement>("#global-search");
+  const resultItems = Array.from(
+    document.querySelectorAll<HTMLElement>(".search-result"),
+  );
+  const defaultOrder = [...resultItems];
+  const resultsCount = document.querySelector<HTMLElement>("#results-count");
+  const emptyState = document.querySelector<HTMLElement>("#search-empty");
+  const resultsContainer =
+    document.querySelector<HTMLElement>("#search-results");
+  const BOOKMARK_KEY = "xvault-bookmarks";
+  const FILTERS_KEY = "xvault-search-filters";
+
+  const languageFilter =
+    document.querySelector<HTMLSelectElement>("#language-filter");
+
+  const categoryFilter =
+    document.querySelector<HTMLSelectElement>("#category-filter");
+
+  const sortFilter = document.querySelector<HTMLSelectElement>("#sort-filter");
+
+  function restoreSearchFilters() {
+    try {
+      const saved = localStorage.getItem(FILTERS_KEY);
+      if (!saved) return;
+
+      const filters: unknown = JSON.parse(saved);
+
+      if (!filters || typeof filters !== "object") return;
+
+      const data = filters as Record<string, unknown>;
+
+      if (
+        languageFilter &&
+        typeof data.language === "string" &&
+        Array.from(languageFilter.options).some(
+          (option) => option.value === data.language,
+        )
+      ) {
+        languageFilter.value = data.language;
+      }
+
+      if (
+        categoryFilter &&
+        typeof data.category === "string" &&
+        Array.from(categoryFilter.options).some(
+          (option) => option.value === data.category,
+        )
+      ) {
+        categoryFilter.value = data.category;
+      }
+
+      if (
+        sortFilter &&
+        typeof data.sort === "string" &&
+        Array.from(sortFilter.options).some(
+          (option) => option.value === data.sort,
+        )
+      ) {
+        sortFilter.value = data.sort;
+      }
+    } catch {
+      localStorage.removeItem(FILTERS_KEY);
+    }
+  }
+
+  function saveSearchFilters() {
+    localStorage.setItem(
+      FILTERS_KEY,
+      JSON.stringify({
+        language: languageFilter?.value ?? "all",
+        category: categoryFilter?.value ?? "all",
+        sort: sortFilter?.value ?? "default",
+      }),
+    );
+  }
+
+  const resetFiltersButton = document.querySelector<HTMLButtonElement>(
+    "#reset-search-filters",
+  );
+
+  resetFiltersButton?.addEventListener("click", () => {
+    if (languageFilter) languageFilter.value = "all";
+    if (categoryFilter) categoryFilter.value = "all";
+    if (sortFilter) sortFilter.value = "default";
+
+    saveSearchFilters();
+    searchSnippets();
+  });
+
+  restoreSearchFilters();
+
+  function getBookmarks(): string[] {
+    try {
+      const saved = localStorage.getItem(BOOKMARK_KEY);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function updateBookmarkButtons() {
+    const bookmarks = getBookmarks();
+
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-bookmark]")
+      .forEach((button) => {
+        const slug = button.dataset.bookmark;
+        if (!slug) return;
+
+        const saved = bookmarks.includes(slug);
+
+        button.setAttribute("aria-pressed", String(saved));
+        button.setAttribute(
+          "aria-label",
+          `${saved ? "Remove bookmark from" : "Bookmark"} ${slug}`,
+        );
+        button.title = saved ? "Remove bookmark" : "Bookmark snippet";
+      });
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-bookmark]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const slug = button.dataset.bookmark;
+        if (!slug) return;
+
+        const bookmarks = getBookmarks();
+        const updated = bookmarks.includes(slug)
+          ? bookmarks.filter((item) => item !== slug)
+          : [...bookmarks, slug];
+
+        localStorage.setItem(BOOKMARK_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new Event("xvault-bookmarks-updated"));
+        updateBookmarkButtons();
+      });
+    });
+
+  window.addEventListener("storage", updateBookmarkButtons);
+  updateBookmarkButtons();
+
+  function searchSnippets() {
+    const query = searchInput?.value.trim().toLowerCase() ?? "";
+    const selectedLanguage =
+      document.querySelector<HTMLSelectElement>("#language-filter")?.value ??
+      "all";
+    const selectedCategory =
+      document.querySelector<HTMLSelectElement>("#category-filter")?.value ??
+      "all";
+    let visibleCount = 0;
+
+    resultItems.forEach((item) => {
+      const searchableText = item.dataset.search ?? "";
+      const language = item.dataset.language ?? "";
+      const category = item.dataset.category ?? "";
+
+      const matchesQuery = !query || searchableText.includes(query);
+      const matchesLanguage =
+        selectedLanguage === "all" || language === selectedLanguage;
+      const matchesCategory =
+        selectedCategory === "all" || category === selectedCategory;
+
+      const matches = matchesQuery && matchesLanguage && matchesCategory;
+
+      item.hidden = !matches;
+
+      if (matches) visibleCount++;
+    });
+
+    const sortMode =
+      document.querySelector<HTMLSelectElement>("#sort-filter")?.value ??
+      "default";
+
+    const sortedItems = [...resultItems];
+
+    if (sortMode === "title") {
+      sortedItems.sort((a, b) =>
+        (a.querySelector("strong")?.textContent ?? "").localeCompare(
+          b.querySelector("strong")?.textContent ?? "",
+        ),
+      );
+    } else if (sortMode === "language") {
+      sortedItems.sort((a, b) =>
+        (a.querySelector(".result-language")?.textContent ?? "").localeCompare(
+          b.querySelector(".result-language")?.textContent ?? "",
+        ),
+      );
+    } else {
+      sortedItems.sort(
+        (a, b) => defaultOrder.indexOf(a) - defaultOrder.indexOf(b),
+      );
+    }
+
+    sortedItems.forEach((item) => resultsContainer?.appendChild(item));
+
+    if (resultsCount) {
+      resultsCount.textContent = query
+        ? `${visibleCount} ${visibleCount === 1 ? "result" : "results"} for "${query}"`
+        : `${visibleCount} snippets`;
+    }
+
+    if (emptyState) emptyState.hidden = visibleCount > 0;
+    if (resultsContainer) resultsContainer.hidden = visibleCount === 0;
+  }
+
+  searchInput?.addEventListener("input", searchSnippets);
+  [sortFilter, languageFilter, categoryFilter].forEach((filter) => {
+    filter?.addEventListener("change", () => {
+      saveSearchFilters();
+      searchSnippets();
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+
+    if (
+      event.key === "/" &&
+      !(target instanceof HTMLInputElement) &&
+      !(target instanceof HTMLTextAreaElement) &&
+      !(target instanceof HTMLSelectElement) &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      searchInput?.focus();
+    }
+
+    if (event.key === "Escape" && document.activeElement === searchInput) {
+      if (searchInput) {
+        searchInput.value = "";
+        searchSnippets();
+        searchInput.blur();
+      }
+    }
+  });
+  const HISTORY_KEY = "xvault-search-history";
+  const historySection =
+    document.querySelector<HTMLElement>("#recent-searches");
+  const historyList = document.querySelector<HTMLElement>(
+    "#recent-searches-list",
+  );
+  const clearHistoryButton = document.querySelector<HTMLButtonElement>(
+    "#clear-search-history",
+  );
+
+  function getSearchHistory(): string[] {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      return Array.isArray(parsed)
+        ? parsed
+            .filter(
+              (item): item is string =>
+                typeof item === "string" && item.trim().length > 0,
+            )
+            .slice(0, 5)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function renderSearchHistory() {
+    if (!historySection || !historyList) return;
+
+    const history = getSearchHistory();
+    historyList.replaceChildren();
+
+    history.forEach((term) => {
+      const item = document.createElement("div");
+      item.className = "recent-search-entry";
+
+      const searchButton = document.createElement("button");
+      searchButton.type = "button";
+      searchButton.className = "recent-search-item";
+      searchButton.textContent = term;
+
+      searchButton.addEventListener("click", () => {
+        if (searchInput) {
+          searchInput.value = term;
+          searchSnippets();
+          searchInput.focus();
+        }
+      });
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "remove-search-item";
+      removeButton.textContent = "×";
+      removeButton.setAttribute("aria-label", `Remove search ${term}`);
+      removeButton.title = "Remove from history";
+
+      removeButton.addEventListener("click", () => {
+        const updated = getSearchHistory().filter(
+          (entry) => entry.toLowerCase() !== term.toLowerCase(),
+        );
+
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        renderSearchHistory();
+      });
+
+      item.append(searchButton, removeButton);
+      historyList.appendChild(item);
+    });
+
+    historySection.hidden = history.length === 0;
+  }
+
+  function saveSearchHistory(term: string) {
+    const normalizedTerm = term.trim();
+    if (!normalizedTerm) return;
+
+    const history = getSearchHistory().filter(
+      (item) => item.toLowerCase() !== normalizedTerm.toLowerCase(),
+    );
+
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify([normalizedTerm, ...history].slice(0, 5)),
+    );
+
+    renderSearchHistory();
+  }
+
+  searchInput?.addEventListener("change", () => {
+    saveSearchHistory(searchInput.value);
+  });
+
+  clearHistoryButton?.addEventListener("click", () => {
+    localStorage.removeItem(HISTORY_KEY);
+    renderSearchHistory();
+  });
+
+  renderSearchHistory();
+  searchSnippets();
+</script>
+
+<style>
+  .search-page {
+    min-height: 100vh;
+    margin-left: var(--sidebar-width);
+    padding: 0 42px 56px;
+  }
+
+  .search-topbar {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-back {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .search-back:hover {
+    color: var(--accent);
+  }
+
+  .search-label,
+  .search-eyebrow,
+  .search-results-header,
+  .global-search-box kbd {
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+  }
+
+  .search-label,
+  .search-eyebrow {
+    color: var(--muted);
+  }
+
+  .search-heading {
+    max-width: 720px;
+    padding: 56px 0 34px;
+  }
+
+  .search-heading h1 {
+    margin: 16px 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(42px, 6vw, 68px);
+    line-height: 1.05;
+    letter-spacing: -2.5px;
+  }
+
+  .search-heading h1 span {
+    color: var(--accent);
+  }
+
+  .search-heading p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .global-search-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 54px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+
+  .global-search-box > span {
+    color: var(--muted);
+    font-size: 23px;
+  }
+
+  .global-search-box input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+
+  .global-search-box input::placeholder {
+    color: var(--muted);
+  }
+
+  .global-search-box kbd {
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  .search-results-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 30px 0 12px;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  .search-results {
+    border-top: 1px solid var(--border);
+  }
+
+  .search-result {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 100px 20px;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 8px;
+    border-bottom: 1px solid var(--border);
+    transition: background 160ms ease;
+  }
+
+  .search-result:hover {
+    background: var(--surface);
+  }
+
+  .result-index {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  .result-main {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .result-main strong {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .result-main > span {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .result-language {
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  .result-arrow {
+    color: var(--muted);
+  }
+
+  .search-result:hover .result-arrow {
+    color: var(--accent);
+  }
+
+  .search-empty {
+    padding: 44px 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .search-empty > span {
+    color: var(--accent);
+    font-size: 26px;
+  }
+
+  .search-empty h2 {
+    margin: 18px 0 10px;
+    font-family: "Space Grotesk", sans-serif;
+  }
+
+  .search-empty p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    .search-page {
+      margin-left: 0;
+      padding: 0 24px 40px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .search-page {
+      padding: 0 18px 32px;
+    }
+
+    .search-topbar {
+      min-height: 64px;
+    }
+
+    .search-label {
+      font-size: 8px;
+    }
+
+    .search-heading {
+      padding: 40px 0 26px;
+    }
+
+    .search-heading h1 {
+      letter-spacing: -1.5px;
+    }
+
+    .search-result {
+      grid-template-columns: 24px minmax(0, 1fr) 16px;
+      gap: 10px;
+      padding: 16px 4px;
+    }
+
+    .result-language {
+      display: none;
+    }
+  }
+  .search-filters {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .search-filters label {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .search-filters select {
+    max-width: 200px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .search-filters select:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  @media (max-width: 600px) {
+    .search-filters {
+      justify-content: space-between;
+    }
+  }
+  .search-sort {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .search-sort label {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .search-sort select {
+    max-width: 200px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+  }
+
+  .search-sort select:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  .search-bookmark {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .search-bookmark svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .search-bookmark:hover,
+  .search-bookmark[aria-pressed="true"] {
+    color: var(--accent);
+    background: var(--surface-raised);
+  }
+
+  .search-bookmark[aria-pressed="true"] svg path {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+
+  .search-result {
+    grid-template-columns: 34px minmax(0, 1fr) 100px 32px 20px;
+  }
+
+  .result-main {
+    text-decoration: none;
+  }
+
+  @media (max-width: 600px) {
+    .search-result {
+      grid-template-columns: 24px minmax(0, 1fr) 32px 16px;
+    }
+  }
+  .search-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.7px;
+    white-space: nowrap;
+  }
+
+  .search-shortcut span {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+  }
+
+  @media (max-width: 480px) {
+    .search-shortcut {
+      display: none;
+    }
+  }
+  .search-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    margin-top: 14px;
+  }
+
+  .search-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .search-filter-group label {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .search-filter-group select {
+    max-width: 200px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .search-filter-group select:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  @media (max-width: 600px) {
+    .search-filters {
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .search-filter-group {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+  }
+  .recent-searches {
+    margin-top: 24px;
+  }
+
+  .recent-searches-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  #clear-search-history {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+    letter-spacing: 0;
+  }
+
+  #clear-search-history:hover {
+    color: var(--accent);
+  }
+
+  .recent-searches-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .recent-search-item {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .recent-search-item:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .recent-search-entry {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .recent-search-entry .recent-search-item {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .remove-search-item {
+    width: 30px;
+    border: 0;
+    border-left: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .remove-search-item:hover {
+    background: var(--surface-raised);
+    color: var(--accent);
+  }
+  #reset-search-filters {
+    display: block;
+    margin: 12px 0 0 auto;
+    padding: 7px 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  #reset-search-filters:hover {
+    color: var(--accent);
+  }
+</style>

@@ -1,0 +1,444 @@
+---
+import { codeToHtml } from "shiki";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import CodeBlock from "../../components/CodeBlock.astro";
+import { snippets } from "../../data/snippets";
+import {
+  getLanguageExtension,
+  getShikiLanguage,
+} from "../../data/categories";
+
+export function getStaticPaths() {
+  return snippets.map((snippet) => ({
+    params: { slug: snippet.slug },
+    props: { snippet },
+  }));
+}
+
+const { snippet } = Astro.props;
+
+const highlightedCode = await codeToHtml(snippet.code, {
+  lang: getShikiLanguage(snippet.language),
+  theme: "github-dark",
+});
+---
+
+<BaseLayout
+  title={`${snippet.title} — XVault`}
+  description={snippet.description}
+>
+  <main class="detail-page">
+    <header class="detail-topbar">
+      <a class="back-link" href="/">
+        <span aria-hidden="true">←</span>
+        Back to library
+      </a>
+
+      <span class="detail-brand">XVault<span>.</span></span>
+    </header>
+
+    <article class="detail-content">
+      <nav class="detail-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Library</a>
+        <span>/</span>
+        <span>{snippet.category}</span>
+        <span>/</span>
+        <span>{snippet.title}</span>
+      </nav>
+
+      <div class="detail-heading">
+        <div class="detail-eyebrow">
+          <span class="detail-dot"></span>
+          {snippet.language} · {snippet.category}
+        </div>
+
+        <h1>{snippet.title}<span>.</span></h1>
+        <p>{snippet.description}</p>
+      </div>
+
+      <section class="detail-code-section">
+        <div class="detail-section-heading">
+          <div>
+            <span class="detail-section-label">SOURCE CODE</span>
+            <h2>Implementation</h2>
+          </div>
+
+          <div class="detail-code-actions">
+            <span class="detail-language">{snippet.language}</span>
+            <button
+              class="download-code-button"
+              type="button"
+              data-download-code
+              data-filename={`${snippet.slug}.${
+                getLanguageExtension(snippet.language)
+              }`}
+            >
+              ↓ Download
+            </button>
+          </div>
+        </div>
+
+        <CodeBlock
+          code={snippet.code}
+          language={snippet.language}
+          title={snippet.title}
+          html={highlightedCode}
+        />
+      </section>
+
+      <nav class="snippet-navigation" aria-label="Snippet navigation">
+        {
+          snippets.findIndex((item) => item.slug === snippet.slug) > 0 && (
+            <a
+              class="snippet-nav-link"
+              href={`/snippets/${snippets[snippets.findIndex((item) => item.slug === snippet.slug) - 1].slug}`}
+            >
+              <span>← Previous snippet</span>
+              <strong>
+                {
+                  snippets[
+                    snippets.findIndex((item) => item.slug === snippet.slug) - 1
+                  ].title
+                }
+              </strong>
+            </a>
+          )
+        }
+
+        {
+          snippets.findIndex((item) => item.slug === snippet.slug) <
+            snippets.length - 1 && (
+            <a
+              class="snippet-nav-link next"
+              href={`/snippets/${snippets[snippets.findIndex((item) => item.slug === snippet.slug) + 1].slug}`}
+            >
+              <span>Next snippet →</span>
+              <strong>
+                {
+                  snippets[
+                    snippets.findIndex((item) => item.slug === snippet.slug) + 1
+                  ].title
+                }
+              </strong>
+            </a>
+          )
+        }
+      </nav>
+
+      <a class="detail-back-bottom" href="/"> ← Return to all snippets </a>
+    </article>
+
+    <footer class="detail-footer">
+      <span>© {new Date().getFullYear()} XVault</span>
+      <span>BUILT FOR THE CRAFT OF CODE ✳</span>
+    </footer>
+  </main>
+</BaseLayout>
+
+<script>
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-download-code]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const codeElement = document.querySelector(".code-content");
+        if (!codeElement) return;
+
+        const filename = button.dataset.filename ?? "snippet.txt";
+        const code = codeElement.getAttribute("data-raw-code");
+
+        if (code === null) {
+          const copyButton =
+            document.querySelector<HTMLButtonElement>("[data-copy]");
+          const source = copyButton?.dataset.copy;
+
+          if (source === undefined) return;
+
+          downloadFile(source, filename);
+          return;
+        }
+
+        downloadFile(code, filename);
+      });
+    });
+
+  function downloadFile(code: string, filename: string) {
+    const blob = new Blob([code], {
+      type: "text/plain;charset=utf-8",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+<style>
+  .detail-page {
+    min-height: 100vh;
+    padding: 0 7%;
+    background: var(--bg);
+  }
+
+  .detail-topbar {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    transition: color 160ms ease;
+  }
+
+  .back-link:hover,
+  .detail-back-bottom:hover {
+    color: var(--accent);
+  }
+
+  .back-link span {
+    font-size: 18px;
+  }
+
+  .detail-brand {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .detail-brand span,
+  .detail-heading h1 span {
+    color: var(--accent);
+  }
+
+  .detail-content {
+    width: 100%;
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 48px 0 80px;
+  }
+
+  .detail-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .detail-breadcrumb a:hover {
+    color: var(--accent);
+  }
+
+  .detail-heading {
+    padding: 58px 0 46px;
+  }
+
+  .detail-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .detail-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .detail-heading h1 {
+    margin: 20px 0 14px;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(36px, 6vw, 64px);
+    line-height: 1.08;
+    letter-spacing: -2.5px;
+  }
+
+  .detail-heading p {
+    max-width: 560px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .detail-code-section {
+    padding: 26px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .detail-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .detail-section-label {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.4px;
+  }
+
+  .detail-section-heading h2 {
+    margin: 7px 0 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 21px;
+    letter-spacing: -0.5px;
+  }
+
+  .detail-language {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 11px;
+  }
+
+  .detail-back-bottom {
+    display: inline-block;
+    margin-top: 30px;
+    color: var(--muted);
+    font-size: 13px;
+    transition: color 160ms ease;
+  }
+
+  .detail-footer {
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 600px) {
+    .detail-page {
+      padding: 0 20px;
+    }
+
+    .detail-content {
+      padding-top: 30px;
+    }
+
+    .detail-heading {
+      padding: 42px 0 32px;
+    }
+
+    .detail-heading h1 {
+      letter-spacing: -1.5px;
+    }
+
+    .detail-code-section {
+      padding: 16px;
+    }
+
+    .detail-footer {
+      align-items: flex-start;
+      justify-content: center;
+      flex-direction: column;
+      padding: 18px 0;
+    }
+  }
+  .snippet-navigation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 28px;
+  }
+
+  .snippet-nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition:
+      border-color 160ms ease,
+      background 160ms ease;
+  }
+
+  .snippet-nav-link:hover {
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  .snippet-nav-link span {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  .snippet-nav-link strong {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .snippet-nav-link.next {
+    text-align: right;
+  }
+
+  @media (max-width: 480px) {
+    .snippet-navigation {
+      grid-template-columns: 1fr;
+    }
+  }
+  .detail-code-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .download-code-button {
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .download-code-button:hover {
+    border-color: var(--accent);
+    background: var(--surface-raised);
+    color: var(--accent);
+  }
+</style>

@@ -1,16 +1,802 @@
 ---
+import { codeToHtml } from "shiki";
+import { snippets } from "../data/snippets";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Sidebar from "../components/Sidebar.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import SnippetCard from "../components/SnippetCard.astro";
+import {
+  categories,
+  getLanguageExtension,
+  getShikiLanguage,
+} from "../data/categories";
+
+const highlightedSnippets = await Promise.all(
+  snippets.map(async (snippet) => ({
+    ...snippet,
+    html: await codeToHtml(snippet.code, {
+      lang: getShikiLanguage(snippet.language),
+      theme: "github-dark",
+    }),
+  })),
+);
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout>
+  <div class="app-shell">
+    <Sidebar categories={categories.slice(1)} snippetCount={snippets.length} />
+
+    <main class="main-content" id="library">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <span>Workspace</span>
+          <span class="breadcrumb-separator">/</span>
+          <strong>Library</strong>
+        </div>
+        <div class="topbar-right">
+          <a href="/my-snippets" class="my-snippets-link" id="my-snippets-link">
+            My Snippets
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="eyebrow">
+          <span class="eyebrow-line"></span>
+          YOUR DEVELOPER KNOWLEDGE BASE
+        </div>
+
+        <h1>Less searching.<br />More <span>building.</span></h1>
+
+        <p class="hero-description">
+          A curated collection of useful code snippets and cheat sheets. Find
+          what you need, copy it, and get back to work.
+        </p>
+
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle
+              cx="10.8"
+              cy="10.8"
+              r="6.8"
+              stroke="currentColor"
+              stroke-width="1.7"></circle>
+            <path
+              d="m16 16 4.2 4.2"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"></path>
+          </svg>
+          <input
+            id="search"
+            type="search"
+            placeholder="Search snippets, languages, concepts..."
+            aria-label="Search snippets"
+          />
+          <kbd>SEARCH</kbd>
+        </div>
+
+        <div class="hero-meta">
+          <span>
+            <strong id="hero-snippet-count" data-base-count={snippets.length}
+              >{snippets.length}</strong
+            >
+            curated snippets
+          </span>
+          <span class="meta-divider"></span>
+          <span><strong>{categories.length - 1}</strong> languages</span>
+          <span class="meta-divider"></span>
+          <span><span class="status-dot"></span> Ready to explore</span>
+        </div>
+      </section>
+
+      <section class="library-section">
+        <div class="section-heading">
+          <div>
+            <div class="section-kicker">THE COLLECTION</div>
+            <h2>Code library<span>.</span></h2>
+          </div>
+          <div class="section-heading-actions">
+            <span class="results-count" id="results-count">
+              Showing {snippets.length} snippets
+            </span>
+            <span class="results-count" id="imported-count"> Imported: 0 </span>
+
+            <button
+              type="button"
+              class="export-zip-button"
+              id="export-zip"
+              data-export-snippets={JSON.stringify(snippets)}
+            >
+              ↓ Export ZIP
+            </button>
+            <button type="button" class="export-zip-button" id="import-zip">
+              ↑ Import ZIP
+            </button>
+
+            <input
+              type="file"
+              id="import-zip-input"
+              accept=".zip,application/zip"
+              hidden
+            />
+          </div>
+        </div>
+
+        <div class="filter-bar" aria-label="Filter snippets">
+          {
+            categories.map((category) => (
+              <button
+                type="button"
+                class:list={["filter-chip", { selected: category === "All" }]}
+                data-filter={category}
+                aria-pressed={category === "All" ? "true" : "false"}
+              >
+                {category}
+              </button>
+            ))
+          }
+        </div>
+
+        <div class="snippet-grid" id="snippet-grid">
+          {
+            highlightedSnippets.map((snippet, index) => (
+              <SnippetCard
+                slug={snippet.slug}
+                title={snippet.title}
+                description={snippet.description}
+                language={snippet.language}
+                category={snippet.category}
+                code={snippet.code}
+                html={snippet.html}
+                index={index}
+              />
+            ))
+          }
+        </div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <span class="empty-icon">⌕</span>
+          <h3>No snippets found</h3>
+          <p>Try another keyword or select a different language.</p>
+          <button type="button" id="reset-filters">Clear filters ↗</button>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <span>© {new Date().getFullYear()} XVault</span>
+        <span
+          >BUILT FOR THE CRAFT OF CODE <span class="footer-star">✳</span></span
+        >
+      </footer>
+    </main>
+  </div>
+</BaseLayout>
+
+<script>
+  import { strToU8, zipSync, unzipSync, strFromU8 } from "fflate";
+  import { supabase } from "../lib/supabase";
+  import { showConfirm, showToast } from "../lib/notifications";
+  const searchInput = document.querySelector<HTMLInputElement>("#search");
+  function getCards(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>(".snippet-card"));
+  }
+  const filterButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("[data-filter]"),
+  );
+  const languageButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("[data-category]"),
+  );
+  const resultsCount = document.querySelector<HTMLElement>("#results-count");
+  const emptyState = document.querySelector<HTMLElement>("#empty-state");
+  const grid = document.querySelector<HTMLElement>("#snippet-grid");
+  const mySnippetsLink =
+    document.querySelector<HTMLAnchorElement>("#my-snippets-link");
+
+  mySnippetsLink?.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error || !session) {
+      window.location.href = "/login";
+      return;
+    }
+
+    window.location.href = "/my-snippets";
+  });
+
+  let activeFilter = "All";
+  function applyFilters() {
+    const cards = getCards();
+    const query = searchInput?.value.trim().toLowerCase() ?? "";
+    let visibleCount = 0;
+
+    cards.forEach((card) => {
+      const matchesLanguage =
+        activeFilter === "All" || card.dataset.language === activeFilter;
+      const matchesSearch = (card.dataset.search ?? "").includes(query);
+      const visible = matchesLanguage && matchesSearch;
+
+      card.hidden = !visible;
+      if (visible) visibleCount++;
+    });
+
+    if (resultsCount) {
+      resultsCount.textContent = `Showing ${visibleCount} of ${cards.length} snippets`;
+    }
+
+    if (grid) grid.hidden = visibleCount === 0;
+    if (emptyState) emptyState.hidden = visibleCount !== 0;
+  }
+
+  function setFilter(filter: string) {
+    activeFilter = filter;
+
+    filterButtons.forEach((button) => {
+      const selected = button.dataset.filter === filter;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+
+    applyFilters();
+  }
+
+  searchInput?.addEventListener("input", applyFilters);
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setFilter(button.dataset.filter ?? "All");
+    });
+  });
+
+  languageButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setFilter(button.dataset.category ?? "All");
+      document
+        .querySelector("#library")
+        ?.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+
+  document.querySelector("#reset-filters")?.addEventListener("click", () => {
+    if (searchInput) searchInput.value = "";
+    setFilter("All");
+  });
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-copy]")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const code = button.dataset.copy;
+        if (!code) return;
+
+        try {
+          await navigator.clipboard.writeText(code);
+          showToast("Code copied to clipboard.");
+
+          const label = button.querySelector("span");
+          if (label) {
+            label.textContent = "Copied!";
+            setTimeout(() => {
+              label.textContent = "Copy";
+            }, 1600);
+          }
+        } catch {
+          showToast("Copy failed. Select and copy the code manually.");
+        }
+      });
+    });
+  interface ExportSnippet {
+    slug: string;
+    title: string;
+    description: string;
+    language: string;
+    category: string;
+    code: string;
+  }
+
+  const exportButton = document.querySelector<HTMLButtonElement>("#export-zip");
+
+  const fileExtensions = Object.fromEntries(
+    categories
+      .slice(1)
+      .map((language) => [language, getLanguageExtension(language)]),
+  );
+  exportButton?.addEventListener("click", () => {
+    try {
+      const data = exportButton.dataset.exportSnippets;
+      if (!data) throw new Error("Snippet data is missing.");
+
+      const allSnippets = JSON.parse(data) as ExportSnippet[];
+      const cards = getCards();
+
+      const visibleSlugs = new Set(
+        cards
+          .filter((card) => !card.hidden)
+          .map((card) => card.dataset.slug)
+          .filter((slug): slug is string => Boolean(slug)),
+      );
+
+      const snippets = allSnippets.filter((snippet) =>
+        visibleSlugs.has(snippet.slug),
+      );
+
+      if (snippets.length === 0) {
+        showToast("No visible snippets to export.");
+        return;
+      }
+
+      if (!Array.isArray(snippets) || snippets.length === 0) {
+        throw new Error("No snippets available.");
+      }
+
+      const files: Record<string, Uint8Array> = {};
+
+      const readme = [
+        "# XVault — Code Snippet Collection",
+        "",
+        `Exported ${snippets.length} snippets from XVault.`,
+        "",
+        "## Contents",
+        "",
+        ...snippets.map((snippet, index) => {
+          const extension = fileExtensions[snippet.language] ?? "txt";
+          const filename = `${snippet.slug}.${extension}`;
+
+          return [
+            `${index + 1}. **${snippet.title}**`,
+            `   - Language: ${snippet.language}`,
+            `   - Category: ${snippet.category}`,
+            `   - Description: ${snippet.description}`,
+            `   - File: \`${snippet.language}/${filename}\``,
+            "",
+          ].join("\n");
+        }),
+        "## Usage",
+        "",
+        "Open each file with your preferred code editor.",
+        "",
+        "Generated by XVault.",
+      ].join("\n");
+
+      files["README.md"] = strToU8(readme);
+
+      snippets.forEach((snippet) => {
+        const extension = fileExtensions[snippet.language] ?? "txt";
+        const filename = `${snippet.slug}.${extension}`;
+        const folder = snippet.language.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+        files[`${folder}/${filename}`] = strToU8(snippet.code);
+      });
+
+      const archive = zipSync(files, { level: 6 });
+      const blob = new Blob([archive], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "xvault-snippets.zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`Exported ${snippets.length} snippets to ZIP.`);
+    } catch (error) {
+      console.error("XVault ZIP export failed:", error);
+      showToast("ZIP export failed. Please try again.");
+    }
+  });
+  interface ImportedSnippet {
+    slug: string;
+    title: string;
+    description: string;
+    language: string;
+    category: string;
+    code: string;
+  }
+
+  const importButton = document.querySelector<HTMLButtonElement>("#import-zip");
+
+  const importInput =
+    document.querySelector<HTMLInputElement>("#import-zip-input");
+
+  const SUPPORTED_EXTENSIONS = Object.fromEntries(
+    categories
+      .slice(1)
+      .map((language) => [getLanguageExtension(language), language]),
+  );
+
+  importButton?.addEventListener("click", () => {
+    importInput?.click();
+  });
+
+  importInput?.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+
+    try {
+      if (!file.name.toLowerCase().endsWith(".zip")) {
+        throw new Error("Please select a ZIP file.");
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error("ZIP file must be 10 MB or smaller.");
+      }
+
+      const archive = unzipSync(new Uint8Array(await file.arrayBuffer()));
+      const imported: ImportedSnippet[] = [];
+
+      for (const [path, content] of Object.entries(archive)) {
+        if (path.endsWith("/") || path.includes("\\")) continue;
+
+        const parts = path.split("/");
+        if (parts.length !== 2) continue;
+
+        const [folder, filename] = parts;
+        const extension = filename.split(".").pop()?.toLowerCase();
+        const language = extension
+          ? SUPPORTED_EXTENSIONS[extension]
+          : undefined;
+
+        if (!language || folder !== language) continue;
+
+        const slug = filename.slice(0, -(extension!.length + 1));
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) continue;
+
+        const code = strFromU8(content);
+        if (!code.trim()) continue;
+
+        imported.push({
+          slug,
+          title: slug
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
+          description: "Imported code snippet.",
+          language,
+          category: "Imported",
+          code,
+        });
+      }
+
+      if (imported.length === 0) {
+        throw new Error("No supported snippets found in this ZIP.");
+      }
+
+      const storageKey = "xvault-imported-snippets";
+      const existing: ImportedSnippet[] = JSON.parse(
+        localStorage.getItem(storageKey) ?? "[]",
+      );
+
+      if (!Array.isArray(existing)) {
+        throw new Error("Stored imported snippets are invalid.");
+      }
+
+      const merged = new Map<string, ImportedSnippet>();
+
+      [...existing, ...imported].forEach((snippet) => {
+        merged.set(`${snippet.language}/${snippet.slug}`, snippet);
+      });
+
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify(Array.from(merged.values())),
+      );
+
+      renderImportedSnippets();
+      showToast(`Imported ${imported.length} snippets.`);
+    } catch (error) {
+      console.error("XVault ZIP import failed:", error);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Import failed. Please check the ZIP file.",
+      );
+    } finally {
+      importInput.value = "";
+    }
+  });
+  const IMPORTED_SNIPPETS_KEY = "xvault-imported-snippets";
+
+  interface StoredSnippet {
+    slug: string;
+    title: string;
+    description: string;
+    language: string;
+    category: string;
+    code: string;
+  }
+
+  function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (character) => {
+      const entities: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      };
+
+      return entities[character];
+    });
+  }
+
+  function updateImportedCount(): void {
+    const element = document.querySelector<HTMLElement>("#imported-count");
+    if (!element) return;
+
+    try {
+      const saved = localStorage.getItem("xvault-imported-snippets");
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      element.textContent = `Imported: ${
+        Array.isArray(parsed) ? parsed.length : 0
+      }`;
+    } catch {
+      element.textContent = "Imported: 0";
+    }
+  }
+
+  function updateHeroSnippetCount(): void {
+    const counter = document.querySelector<HTMLElement>("#hero-snippet-count");
+
+    if (!counter) return;
+
+    const importedCounter =
+      document.querySelector<HTMLElement>("#imported-count");
+
+    const importedCount =
+      Number(importedCounter?.textContent?.replace("Imported:", "").trim()) ||
+      0;
+
+    const baseCount = Number(counter.dataset.baseCount);
+
+    counter.textContent = String(
+      (Number.isFinite(baseCount) ? baseCount : 0) + importedCount,
+    );
+  }
+
+  function renderImportedSnippets(): void {
+    const grid = document.querySelector<HTMLElement>("#snippet-grid");
+    if (!grid) return;
+
+    let imported: StoredSnippet[];
+
+    try {
+      const saved = localStorage.getItem(IMPORTED_SNIPPETS_KEY);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      if (!Array.isArray(parsed)) return;
+
+      imported = parsed.filter(
+        (item): item is StoredSnippet =>
+          item !== null &&
+          typeof item === "object" &&
+          typeof item.slug === "string" &&
+          typeof item.title === "string" &&
+          typeof item.description === "string" &&
+          typeof item.language === "string" &&
+          typeof item.category === "string" &&
+          typeof item.code === "string",
+      );
+    } catch {
+      showToast("Unable to read imported snippets.");
+      return;
+    }
+
+    grid
+      .querySelectorAll("[data-imported-card]")
+      .forEach((card) => card.remove());
+
+    imported.forEach((snippet, index) => {
+      const card = document.createElement("article");
+      card.className = "snippet-card";
+      card.dataset.importedCard = "true";
+      card.dataset.slug = snippet.slug;
+      card.dataset.language = snippet.language;
+      card.dataset.search =
+        `${snippet.title} ${snippet.description} ${snippet.language} ${snippet.category} ${snippet.code}`.toLowerCase();
+
+      const header = document.createElement("div");
+      header.className = "card-header";
+
+      const titleGroup = document.createElement("div");
+      titleGroup.className = "card-title-group";
+
+      const number = document.createElement("span");
+      number.className = "card-index";
+      number.textContent = String(getCards().length + 1).padStart(2, "0");
+
+      const heading = document.createElement("h3");
+      heading.textContent = snippet.title;
+
+      titleGroup.append(number, heading);
+
+      const actions = document.createElement("div");
+      actions.className = "card-header-actions";
+
+      const badge = document.createElement("span");
+      badge.className = "language-badge";
+      badge.textContent = snippet.language;
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "bookmark-button";
+      deleteButton.textContent = "×";
+      deleteButton.setAttribute("aria-label", `Delete ${snippet.title}`);
+      deleteButton.title = "Delete imported snippet";
+
+      actions.append(badge, deleteButton);
+      header.append(titleGroup, actions);
+
+      const description = document.createElement("p");
+      description.className = "card-description";
+      description.textContent = snippet.description;
+
+      const codeContainer = document.createElement("div");
+      codeContainer.className = "code-container";
+
+      const toolbar = document.createElement("div");
+      toolbar.className = "code-toolbar";
+
+      const indicator = document.createElement("span");
+      indicator.className = "code-indicator";
+
+      const languageLabel = document.createElement("span");
+      languageLabel.textContent = snippet.language.toLowerCase();
+
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "copy-button";
+      copyButton.dataset.copy = snippet.code;
+      copyButton.setAttribute("aria-label", `Copy ${snippet.title}`);
+      copyButton.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="8" y="8" width="11" height="12" rx="2"
+          stroke="currentColor" stroke-width="1.6"></rect>
+        <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"
+          stroke="currentColor" stroke-width="1.6"></path>
+      </svg>
+      <span>Copy</span>
+    `;
+
+      toolbar.append(indicator, languageLabel, copyButton);
+
+      const codeContent = document.createElement("div");
+      codeContent.className = "code-content";
+
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = snippet.code;
+      pre.append(code);
+      codeContent.append(pre);
+
+      codeContainer.append(toolbar, codeContent);
+
+      const footer = document.createElement("div");
+      footer.className = "card-footer";
+
+      const category = document.createElement("span");
+      category.textContent = snippet.category;
+
+      const importedLabel = document.createElement("span");
+      importedLabel.textContent = "Imported locally";
+
+      footer.append(category, importedLabel);
+      card.append(header, description, codeContainer, footer);
+      grid.append(card);
+
+      deleteButton.addEventListener("click", async () => {
+        const confirmed = await showConfirm(
+          `Delete imported snippet "${snippet.title}"?`,
+          "Delete snippet?",
+        );
+
+        if (!confirmed) return;
+
+        try {
+          const saved = localStorage.getItem(IMPORTED_SNIPPETS_KEY);
+          const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+          if (!Array.isArray(parsed)) {
+            throw new Error("Invalid imported snippet data.");
+          }
+
+          const updated = parsed.filter(
+            (item) =>
+              item &&
+              typeof item === "object" &&
+              !(
+                "slug" in item &&
+                "language" in item &&
+                item.slug === snippet.slug &&
+                item.language === snippet.language
+              ),
+          );
+
+          localStorage.setItem(IMPORTED_SNIPPETS_KEY, JSON.stringify(updated));
+
+          renderImportedSnippets();
+          showToast("Imported snippet deleted.");
+        } catch (error) {
+          console.error("Failed to delete imported snippet:", error);
+          showToast("Could not delete snippet.");
+        }
+      });
+
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(snippet.code);
+          showToast("Code copied to clipboard.");
+
+          const label = copyButton.querySelector("span");
+
+          if (label) {
+            label.textContent = "Copied!";
+
+            window.setTimeout(() => {
+              label.textContent = "Copy";
+            }, 1600);
+          }
+        } catch {
+          showToast("Copy failed. Please copy the code manually.");
+        }
+      });
+    });
+
+    applyFilters();
+    updateImportedCount();
+    updateHeroSnippetCount();
+  }
+
+  renderImportedSnippets();
+</script>
+
+<style>
+  .section-heading-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .export-zip-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .export-zip-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface-raised);
+  }
+
+  @media (max-width: 600px) {
+    .section-heading-actions {
+      justify-content: flex-start;
+      gap: 10px;
+    }
+  }
+</style>

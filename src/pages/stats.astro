@@ -1,0 +1,343 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { snippets } from "../data/snippets";
+import { categories } from "../data/categories";
+
+const languages = [...new Set(snippets.map((snippet) => snippet.language))];
+const categoryCount = new Set(snippets.map((snippet) => snippet.category)).size;
+
+const languageStats = languages
+  .map((language) => ({
+    name: language,
+    count: snippets.filter((snippet) => snippet.language === language).length,
+  }))
+  .sort((a, b) => b.count - a.count);
+---
+
+<BaseLayout
+  title="Library Statistics — XVault"
+  description="Statistics for the XVault code snippet library."
+>
+  <div class="app-shell">
+    <Sidebar
+      categories={categories.slice(1)}
+      snippetCount={snippets.length}
+      currentPath={Astro.url.pathname}
+    />
+
+    <main class="stats-page">
+      <header class="stats-topbar">
+        <a class="stats-back" href="/">← Back to library</a>
+        <span class="stats-label">XVAULT / STATISTICS</span>
+      </header>
+
+    <section class="stats-heading">
+      <span class="stats-eyebrow">LIBRARY ANALYTICS / 001</span>
+      <h1>Knowledge at a <span>glance.</span></h1>
+      <p>A quick overview of the code references currently stored in XVault.</p>
+    </section>
+
+    <section class="stats-overview" aria-label="Library overview">
+      <article class="stats-card">
+        <span>Total snippets</span>
+        <strong>{snippets.length.toString().padStart(2, "0")}</strong>
+        <small>CODE REFERENCES</small>
+      </article>
+
+      <article class="stats-card">
+        <span>Languages</span>
+        <strong>{languages.length.toString().padStart(2, "0")}</strong>
+        <small>PROGRAMMING LANGUAGES</small>
+      </article>
+
+      <article class="stats-card">
+        <span>Categories</span>
+        <strong>{categoryCount.toString().padStart(2, "0")}</strong>
+        <small>TOPIC GROUPS</small>
+      </article>
+    </section>
+
+    <section class="language-section">
+      <div class="section-heading">
+        <div>
+          <span class="stats-eyebrow">DISTRIBUTION</span>
+          <h2>Snippets by language</h2>
+        </div>
+        <span class="total-label">{snippets.length} TOTAL</span>
+      </div>
+
+      <div class="language-list">
+        {
+          languageStats.map((item) => {
+            const percentage = Math.round((item.count / snippets.length) * 100);
+
+            return (
+              <article class="language-row">
+                <div class="language-info">
+                  <span>{item.name}</span>
+                  <span>
+                    {item.count} {item.count === 1 ? "snippet" : "snippets"}
+                  </span>
+                </div>
+
+                <div
+                  class="language-bar"
+                  role="progressbar"
+                  aria-label={`${item.name} snippets`}
+                  aria-valuenow={percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <span style={`width: ${percentage}%`} />
+                </div>
+              </article>
+            );
+          })
+        }
+      </div>
+    </section>
+
+    <section class="stats-cta">
+      <div>
+        <span class="stats-eyebrow">KEEP EXPLORING</span>
+        <h2>Back to the library.</h2>
+      </div>
+      <a href="/">Browse snippets <span>↗</span></a>
+    </section>
+
+    <footer class="stats-footer">
+      <span>© {new Date().getFullYear()} XVault</span>
+      <span>BUILT FOR THE CRAFT OF CODE ✳</span>
+    </footer>
+    </main>
+  </div>
+</BaseLayout>
+
+<style>
+  .stats-page {
+    min-height: 100vh;
+    margin-left: var(--sidebar-width);
+    padding: 0 42px 56px;
+  }
+
+  .stats-topbar {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-heading h1 span {
+    color: var(--accent);
+  }
+
+  .stats-back {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .stats-back:hover {
+    color: var(--accent);
+  }
+
+  .stats-label,
+  .stats-eyebrow,
+  .stats-card small,
+  .total-label {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+  }
+
+  .stats-heading {
+    padding: 56px 0 36px;
+  }
+
+  .stats-heading h1 {
+    margin: 16px 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(42px, 6vw, 68px);
+    line-height: 1.05;
+    letter-spacing: -2.5px;
+  }
+
+  .stats-heading p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .stats-overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .stats-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .stats-card > span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .stats-card strong {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 48px;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .stats-card small {
+    font-size: 9px;
+  }
+
+  .language-section {
+    max-width: 850px;
+    padding: 64px 0 20px;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .section-heading h2,
+  .stats-cta h2 {
+    margin: 10px 0 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 25px;
+    letter-spacing: -0.8px;
+  }
+
+  .total-label {
+    white-space: nowrap;
+  }
+
+  .language-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .language-info {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+
+  .language-info span:last-child {
+    color: var(--muted);
+  }
+
+  .language-bar {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--border);
+  }
+
+  .language-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+
+  .stats-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 60px;
+    padding: 30px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-cta > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 17px;
+    border-radius: 5px;
+    background: var(--accent);
+    color: #101110;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .stats-footer {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  @media (max-width: 700px) {
+    .stats-page {
+      margin-left: 0;
+      padding: 0 18px 32px;
+    }
+
+    .stats-topbar {
+      min-height: 64px;
+    }
+
+    .stats-label {
+      font-size: 8px;
+    }
+
+    .stats-heading {
+      padding: 40px 0 28px;
+    }
+
+    .stats-overview {
+      grid-template-columns: 1fr;
+    }
+
+    .stats-card {
+      gap: 12px;
+    }
+
+    .stats-card strong {
+      font-size: 40px;
+    }
+
+    .stats-heading h1 {
+      letter-spacing: -1.5px;
+    }
+
+    .stats-cta {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .stats-footer {
+      align-items: flex-start;
+      justify-content: center;
+      flex-direction: column;
+      padding: 18px 0;
+    }
+  }
+</style>

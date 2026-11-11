@@ -1,0 +1,290 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { snippets } from "../data/snippets";
+import { categories, getLanguageSlug } from "../data/categories";
+import { getLanguageIcon } from "../data/languageIcons";
+
+const languages = categories
+  .filter((category) => category !== "All")
+  .map((language) => ({
+    name: language,
+    slug: getLanguageSlug(language),
+    count: snippets.filter(
+      (snippet) => snippet.language.toLowerCase() === language.toLowerCase(),
+    ).length,
+  }));
+---
+
+<BaseLayout
+  title="Categories — XVault"
+  description="Browse code snippets by programming language."
+>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css"
+  />
+  <div class="app-shell">
+    <Sidebar
+      categories={[]}
+      snippetCount={snippets.length}
+      currentPath={Astro.url.pathname}
+    />
+
+    <main class="categories-main">
+      <header class="categories-topbar">
+        <a href="/" class="categories-back">← Back to library</a>
+        <span class="categories-label">XVAULT / CATEGORIES</span>
+      </header>
+
+      <section class="categories-heading">
+        <span class="categories-eyebrow">EXPLORE THE COLLECTION</span>
+        <h1>Browse by language<span>.</span></h1>
+        <p>
+          Explore your code snippets by programming language. Select a category
+          to view its collection.
+        </p>
+
+        <span class="categories-total">
+          {languages.length} LANGUAGES · {snippets.length} SNIPPETS
+        </span>
+      </section>
+
+      <section class="language-grid" aria-label="Programming languages">
+        {
+          languages.map((language) => (
+            <a class="language-card" href={`/categories/${language.slug}`}>
+              <div class="language-card-top">
+                <i
+                  class={`language-icon ${getLanguageIcon(language.name)}`}
+                  aria-hidden="true"
+                />
+
+                <span class="language-arrow">↗</span>
+              </div>
+
+              <h2>{language.name}</h2>
+
+              <div class="language-card-bottom">
+                <span>
+                  {language.count}{" "}
+                  {language.count === 1 ? "snippet" : "snippets"}
+                </span>
+                <span class="language-view">VIEW COLLECTION</span>
+              </div>
+            </a>
+          ))
+        }
+      </section>
+    </main>
+  </div>
+</BaseLayout>
+
+<style>
+  .app-shell {
+    min-height: 100vh;
+  }
+
+  .categories-main {
+    min-height: 100vh;
+    margin-left: var(--sidebar-width);
+    padding: 0 42px 56px;
+  }
+
+  .categories-topbar {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .categories-back {
+    color: var(--muted);
+    font-size: 12px;
+    transition: color 160ms ease;
+  }
+
+  .categories-back:hover {
+    color: var(--accent);
+  }
+
+  .categories-label,
+  .categories-eyebrow,
+  .categories-total {
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .categories-label,
+  .categories-eyebrow {
+    color: var(--muted);
+  }
+
+  .categories-heading {
+    max-width: 760px;
+    padding: 56px 0 36px;
+  }
+
+  .categories-heading h1 {
+    margin: 16px 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(38px, 5.5vw, 64px);
+    line-height: 1.08;
+    letter-spacing: -2.5px;
+  }
+
+  .categories-heading h1 span {
+    color: var(--accent);
+  }
+
+  .categories-heading p {
+    max-width: 540px;
+    margin: 0 0 22px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .categories-total {
+    color: var(--accent);
+  }
+
+  .language-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .language-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: inherit;
+    transition:
+      border-color 180ms ease,
+      transform 180ms ease,
+      background 180ms ease;
+  }
+
+  .language-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+  }
+
+  .language-card-top,
+  .language-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .language-dot {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .language-arrow {
+    color: var(--muted);
+    font-size: 17px;
+    transition: color 180ms ease;
+  }
+
+  .language-card:hover .language-arrow {
+    color: var(--accent);
+  }
+
+  .language-card h2 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  .language-card-bottom {
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .language-card-bottom > span:first-child {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .language-view {
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 1100px) {
+    .language-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 900px) {
+    .categories-main {
+      margin-left: 0;
+      padding: 0 24px 40px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .categories-main {
+      padding: 0 18px 32px;
+    }
+
+    .categories-topbar {
+      min-height: 64px;
+    }
+
+    .categories-label {
+      font-size: 8px;
+    }
+
+    .categories-heading {
+      padding: 40px 0 28px;
+    }
+
+    .categories-heading h1 {
+      letter-spacing: -1.5px;
+    }
+
+    .language-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .language-card {
+      padding: 18px;
+    }
+  }
+  .language-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--accent);
+    transition: transform 180ms ease;
+  }
+
+  .language-card:hover .language-icon {
+    transform: scale(1.08);
+  }
+</style>

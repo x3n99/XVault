@@ -1,0 +1,201 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="My Account — XVault">
+  <main class="account-page">
+    <section class="account-card">
+      <a class="brand" href="/">XVault<span>.</span></a>
+      <p class="eyebrow">PERSONAL WORKSPACE</p>
+      <h1>My account</h1>
+      <p class="description">
+        Manage your personal snippet collection and bookmarks.
+      </p>
+
+      <div id="account-status" role="status" aria-live="polite">
+        Checking your session...
+      </div>
+
+      <div id="account-details" hidden>
+        <div class="detail">
+          <span>Email</span>
+          <strong id="account-email"></strong>
+        </div>
+
+        <div class="detail">
+          <span>User ID</span>
+          <code id="account-user-id"></code>
+        </div>
+
+        <div class="account-actions">
+          <a href="/">Browse snippets</a>
+          <button type="button" id="logout-button">Sign out</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    import { getAuthenticatedUser, supabase } from "../lib/supabase";
+
+    const status = document.querySelector<HTMLElement>("#account-status");
+    const details = document.querySelector<HTMLElement>("#account-details");
+    const emailElement = document.querySelector<HTMLElement>("#account-email");
+    const userIdElement =
+      document.querySelector<HTMLElement>("#account-user-id");
+    const logoutButton =
+      document.querySelector<HTMLButtonElement>("#logout-button");
+
+    async function loadAccount() {
+      try {
+        const { data, error } = await getAuthenticatedUser();
+
+        if (error || !data.user) {
+          window.location.replace("/login");
+          return;
+        }
+
+        if (status) status.textContent = "You are signed in.";
+        if (emailElement)
+          emailElement.textContent = data.user.email ?? "No email";
+        if (userIdElement) userIdElement.textContent = data.user.id;
+        if (details) details.hidden = false;
+      } catch (error) {
+        console.error("Failed to check account session:", error);
+        if (status) {
+          status.textContent =
+            "Could not verify your session. Check your connection and refresh the page.";
+        }
+      }
+    }
+
+    logoutButton?.addEventListener("click", async () => {
+      logoutButton.disabled = true;
+      logoutButton.textContent = "Signing out...";
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        if (status) status.textContent = error.message;
+        logoutButton.disabled = false;
+        logoutButton.textContent = "Sign out";
+        return;
+      }
+
+      window.location.replace("/login");
+    });
+
+    loadAccount();
+  </script>
+
+  <style>
+    .account-page {
+      min-height: 80vh;
+      display: grid;
+      place-items: center;
+      padding: 48px 20px;
+    }
+
+    .account-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 36px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #121412;
+    }
+
+    .brand {
+      color: #f1f1e9;
+      font-size: 25px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: var(--accent);
+      margin-left: -10px;
+    }
+
+    .eyebrow {
+      margin-top: 32px;
+      color: #b6d96c;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    h1 {
+      margin: 12px 0;
+      color: #f1f1e9;
+      font-size: 30px;
+    }
+
+    .description {
+      color: #a2a69d;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    #account-status {
+      margin-top: 28px;
+      color: #b6d96c;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .detail {
+      display: grid;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .detail span {
+      color: #a2a69d;
+      font-size: 12px;
+    }
+
+    .detail strong,
+    .detail code {
+      color: #f1f1e9;
+      overflow-wrap: anywhere;
+    }
+
+    .account-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .account-actions a {
+      color: #b6d96c;
+      text-decoration: none;
+    }
+
+    button {
+      padding: 11px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #191c18;
+      color: #f1f1e9;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    @media (max-width: 480px) {
+      .account-card {
+        padding: 26px 20px;
+      }
+    }
+  </style>
+</BaseLayout>

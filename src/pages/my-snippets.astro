@@ -1,0 +1,2264 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { categories, getLanguageSlug } from "../data/categories";
+---
+
+<BaseLayout
+  title="My Snippets — XVault"
+  description="Manage your personal code snippets."
+>
+  <main class="workspace">
+    <header class="topbar">
+      <a class="brand" href="/">XVault<span>.</span></a>
+      <nav>
+        <a href="/">Library</a>
+        <a href="/favorites">Favorites</a>
+        <a href="/account">My Account</a>
+      </nav>
+    </header>
+
+    <section class="heading">
+      <p class="eyebrow">PERSONAL WORKSPACE</p>
+      <h1>My <span>snippets.</span></h1>
+      <p class="description">Your private collection of reusable code.</p>
+    </section>
+
+    <p id="page-status" role="status">Checking your session...</p>
+
+    <section class="snippet-stats" aria-label="Snippet statistics">
+      <article class="stat-card">
+        <span class="stat-label">Total Snippets</span>
+        <strong id="stat-total">0</strong>
+        <span class="stat-description">All your snippets</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Favorites</span>
+        <strong id="stat-favorites">0</strong>
+        <span class="stat-description">Saved favorites</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Categories</span>
+        <strong id="stat-categories">0</strong>
+        <span class="stat-description">Categories used</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Languages</span>
+        <strong id="stat-languages">0</strong>
+        <span class="stat-description">Languages used</span>
+      </article>
+    </section>
+
+    <section id="snippet-workspace" hidden>
+      <div class="toolbar">
+        <div class="search-wrapper">
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+          >
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+
+          <input
+            id="snippet-search"
+            type="search"
+            placeholder="Search snippets..."
+            aria-label="Search your snippets"
+          />
+        </div>
+
+        <select id="category-filter" aria-label="Filter by category">
+          <option value="">All categories</option>
+          <option value="General">General</option>
+          <option value="Frontend">Frontend</option>
+          <option value="Backend">Backend</option>
+          <option value="Database">Database</option>
+          <option value="DevOps">DevOps</option>
+          <option value="UI/UX">UI/UX</option>
+          <option value="Tools">Tools</option>
+        </select>
+
+        <select id="favorite-filter" aria-label="Filter favorites">
+          <option value="all">All snippets</option>
+          <option value="favorites">Favorites only</option>
+        </select>
+
+        <select id="sort-filter" aria-label="Sort snippets">
+          <option value="updated-desc">Recently updated</option>
+          <option value="updated-asc">Oldest updated</option>
+          <option value="title-asc">Title A–Z</option>
+          <option value="title-desc">Title Z–A</option>
+        </select>
+
+        <div class="toolbar-actions">
+          <button type="button" id="select-mode-button">
+            Select snippets
+          </button>
+
+          <button type="button" id="import-snippets-button"> Import </button>
+
+          <input
+            type="file"
+            id="import-snippets-file"
+            accept=".json,application/json"
+            hidden
+          />
+
+          <button type="button" id="export-snippets-button">
+            Export all
+          </button>
+
+          <button type="button" id="new-snippet-button" class="primary-action">
+            <span aria-hidden="true">+</span>
+            New snippet
+          </button>
+        </div>
+      </div>
+
+      <div id="selection-toolbar" class="selection-toolbar" hidden>
+        <label class="select-all-label">
+          <input type="checkbox" id="select-all-snippets-checkbox" />
+          Select all
+        </label>
+
+        <span id="selection-count">0 selected</span>
+
+        <button type="button" id="export-selected-snippets-button" disabled>
+          Export selected
+        </button>
+
+        <button type="button" id="cancel-selection-button"> Cancel </button>
+      </div>
+
+      <div id="snippet-list" class="snippet-list"></div>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <h2>No personal snippets yet.</h2>
+        <p>Create your first snippet to start your collection.</p>
+      </div>
+
+      <dialog id="snippet-dialog" class="snippet-dialog">
+        <form id="snippet-form">
+          <div class="dialog-header">
+            <div>
+              <p class="eyebrow">PERSONAL WORKSPACE</p>
+              <h2 id="dialog-title">New snippet</h2>
+            </div>
+            <button type="button" id="close-dialog" aria-label="Close editor">
+              ✕
+            </button>
+          </div>
+
+          <label for="snippet-title">Title</label>
+          <input
+            id="snippet-title"
+            name="title"
+            required
+            maxlength="150"
+            placeholder="Snippet title"
+          />
+
+          <label for="snippet-description">Description</label>
+          <input
+            id="snippet-description"
+            name="description"
+            maxlength="500"
+            placeholder="What does this snippet do?"
+          />
+
+          <label for="snippet-language">Language</label>
+          <select id="snippet-language" name="language">
+            {
+              categories.slice(1).map((language) => (
+                <option value={getLanguageSlug(language)}>
+                  {language}
+                </option>
+              ))
+            }
+          </select>
+
+          <label for="snippet-category">Category</label>
+          <select id="snippet-category" name="category">
+            <option value="General">General</option>
+            <option value="Frontend">Frontend</option>
+            <option value="Backend">Backend</option>
+            <option value="Database">Database</option>
+            <option value="DevOps">DevOps</option>
+            <option value="UI/UX">UI/UX</option>
+            <option value="Tools">Tools</option>
+          </select>
+
+          <label for="snippet-tags">Tags</label>
+          <input
+            id="snippet-tags"
+            name="tags"
+            maxlength="300"
+            placeholder="astro, supabase, authentication"
+          />
+          <p class="field-hint">Separate multiple tags with commas.</p>
+
+          <label for="snippet-code">Code</label>
+          <textarea
+            id="snippet-code"
+            name="code"
+            required
+            spellcheck="false"
+            placeholder="Write or paste your code here..."></textarea>
+
+          <div class="preview-heading">SYNTAX PREVIEW</div>
+          <div id="snippet-preview" class="snippet-preview">
+            <pre><code>Preview will appear here.</code></pre>
+          </div>
+
+          <p id="form-status" role="status"></p>
+
+          <div class="dialog-actions">
+            <button type="button" id="cancel-dialog">Cancel</button>
+            <button type="submit" id="save-snippet-button">
+              Save snippet
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+  </main>
+
+</BaseLayout>
+
+<script>
+  import { getAuthenticatedUser, supabase } from "../lib/supabase";
+  import { codeToHtml } from "shiki";
+  import { showAlert, showConfirm, showToast } from "../lib/notifications";
+  import { getShikiLanguage } from "../data/categories";
+
+  type UserSnippet = {
+    id: string;
+    title: string;
+    description: string;
+    language: string;
+    code: string;
+    category: string;
+    tags: string[];
+    is_favorite: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+
+  const status = document.querySelector<HTMLElement>("#page-status");
+  const workspace = document.querySelector<HTMLElement>("#snippet-workspace");
+  const list = document.querySelector<HTMLElement>("#snippet-list");
+  const emptyState = document.querySelector<HTMLElement>("#empty-state");
+  const searchInput =
+    document.querySelector<HTMLInputElement>("#snippet-search");
+
+  const dialog = document.querySelector<HTMLDialogElement>("#snippet-dialog");
+  const snippetForm = document.querySelector<HTMLFormElement>("#snippet-form");
+  const dialogTitle = document.querySelector<HTMLElement>("#dialog-title");
+  const titleInput = document.querySelector<HTMLInputElement>("#snippet-title");
+  const descriptionInput = document.querySelector<HTMLInputElement>(
+    "#snippet-description",
+  );
+  const languageInput =
+    document.querySelector<HTMLSelectElement>("#snippet-language");
+
+  const categoryInput =
+    document.querySelector<HTMLSelectElement>("#snippet-category");
+
+  const tagsInput = document.querySelector<HTMLInputElement>("#snippet-tags");
+
+  const categoryFilter =
+    document.querySelector<HTMLSelectElement>("#category-filter");
+
+  const favoriteFilter =
+    document.querySelector<HTMLSelectElement>("#favorite-filter");
+
+  const sortFilter = document.querySelector<HTMLSelectElement>("#sort-filter");
+
+  const codeInput =
+    document.querySelector<HTMLTextAreaElement>("#snippet-code");
+  const preview = document.querySelector<HTMLElement>("#snippet-preview");
+  const formStatus = document.querySelector<HTMLElement>("#form-status");
+  const saveButton = document.querySelector<HTMLButtonElement>(
+    "#save-snippet-button",
+  );
+
+  let currentUserId: string | null = null;
+  let snippets: UserSnippet[] = [];
+  let editingId: string | null = null;
+  let previewTimer: ReturnType<typeof setTimeout> | undefined;
+  let previewRequest = 0;
+  let selectionMode = false;
+  const selectedSnippetIds = new Set<string>();
+
+  function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (character) => {
+      const entities: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      };
+
+      return entities[character];
+    });
+  }
+
+  async function updatePreview() {
+    if (!preview || !codeInput || !languageInput) return;
+
+    const request = ++previewRequest;
+    const code = codeInput.value;
+    const language = getShikiLanguage(languageInput.value);
+
+    try {
+      const html = await codeToHtml(code || " ", {
+        lang: language,
+        theme: "github-dark",
+      });
+
+      if (request === previewRequest && preview) {
+        preview.innerHTML = html;
+      }
+    } catch (error) {
+      console.error("Syntax preview failed:", error);
+
+      if (request === previewRequest && preview) {
+        preview.innerHTML = `<pre><code>${escapeHtml(code)}</code></pre>`;
+      }
+    }
+  }
+
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      void updatePreview();
+    }, 250);
+  }
+
+  async function loadSnippets() {
+    if (!currentUserId || !list || !emptyState) return;
+
+    if (status) status.textContent = "Loading your snippets...";
+
+    const { data, error } = await supabase
+      .from("user_snippets")
+      .select(
+        "id, title, description, language, code, category, tags, is_favorite, created_at, updated_at",
+      )
+      .eq("user_id", currentUserId)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load snippets:", error.message);
+      if (status) status.textContent = "Failed to load snippets.";
+      return;
+    }
+
+    snippets = (data ?? []) as UserSnippet[];
+    renderSnippets();
+
+    if (status) status.textContent = "";
+  }
+
+  async function highlightSnippetCards() {
+    if (!list) return;
+
+    const codeBlocks = list.querySelectorAll<HTMLElement>(
+      "[data-highlight-code]",
+    );
+
+    await Promise.all(
+      Array.from(codeBlocks).map(async (element) => {
+        const language = element.dataset.language ?? "text";
+        const code = element.textContent ?? "";
+        const originalPre = element.closest("pre");
+
+        if (!originalPre) return;
+
+        try {
+          const html = await codeToHtml(code || " ", {
+            lang: getShikiLanguage(language),
+            theme: "github-dark",
+          });
+
+          if (
+            originalPre.isConnected &&
+            element.dataset.highlightCode === "true"
+          ) {
+            originalPre.outerHTML = html;
+          }
+        } catch (error) {
+          console.error("Failed to highlight snippet:", error);
+        }
+      }),
+    );
+  }
+
+  function updateSnippetStats() {
+    const total = document.querySelector("#stat-total");
+    const favorites = document.querySelector("#stat-favorites");
+    const categories = document.querySelector("#stat-categories");
+    const languages = document.querySelector("#stat-languages");
+
+    if (!total || !favorites || !categories || !languages) return;
+
+    total.textContent = String(snippets.length);
+
+    favorites.textContent = String(
+      snippets.filter((snippet) => snippet.is_favorite === true).length,
+    );
+
+    categories.textContent = String(
+      new Set(
+        snippets.map((snippet) =>
+          (snippet.category || "General").trim().toLowerCase(),
+        ),
+      ).size,
+    );
+
+    languages.textContent = String(
+      new Set(
+        snippets
+          .map((snippet) => snippet.language.trim().toLowerCase())
+          .filter(Boolean),
+      ).size,
+    );
+  }
+
+  function updateSelectionToolbar() {
+    const toolbar = document.querySelector<HTMLElement>("#selection-toolbar");
+    const countLabel = document.querySelector<HTMLElement>("#selection-count");
+    const exportButton = document.querySelector<HTMLButtonElement>(
+      "#export-selected-snippets-button",
+    );
+    const selectAll = document.querySelector<HTMLInputElement>(
+      "#select-all-snippets-checkbox",
+    );
+    const selectModeButton = document.querySelector<HTMLButtonElement>(
+      "#select-mode-button",
+    );
+
+    const checkboxes = Array.from(
+      document.querySelectorAll<HTMLInputElement>(".snippet-select-checkbox"),
+    );
+
+    const visibleIds = checkboxes.map(
+      (checkbox) => checkbox.dataset.selectSnippet,
+    );
+
+    const visibleSelectedCount = visibleIds.filter(
+      (id) => id && selectedSnippetIds.has(id),
+    ).length;
+
+    const selectedCount = selectedSnippetIds.size;
+
+    if (toolbar) toolbar.hidden = !selectionMode;
+
+    if (countLabel) {
+      countLabel.textContent = `${selectedCount} selected`;
+    }
+
+    if (exportButton) {
+      exportButton.disabled = selectedCount === 0;
+    }
+
+    if (selectAll) {
+      selectAll.checked =
+        checkboxes.length > 0 && visibleSelectedCount === checkboxes.length;
+
+      selectAll.indeterminate =
+        visibleSelectedCount > 0 && visibleSelectedCount < checkboxes.length;
+    }
+
+    if (selectModeButton) {
+      selectModeButton.textContent = selectionMode
+        ? "Selecting..."
+        : "Select snippets";
+    }
+  }
+
+  async function importSnippets(file: File) {
+    if (!currentUserId) {
+      showAlert("Please log in before importing snippets.");
+      return;
+    }
+
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      await showAlert("Invalid JSON file.");
+      return;
+    }
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !("snippets" in parsed) ||
+      !Array.isArray(parsed.snippets)
+    ) {
+      showAlert("This file is not a valid XVault export.");
+      return;
+    }
+
+    const validSnippets = parsed.snippets.filter((item: unknown) => {
+      if (!item || typeof item !== "object") return false;
+
+      const snippet = item as Record<string, unknown>;
+
+      return (
+        typeof snippet.title === "string" &&
+        snippet.title.trim().length > 0 &&
+        typeof snippet.description === "string" &&
+        typeof snippet.language === "string" &&
+        typeof snippet.code === "string" &&
+        (snippet.category === undefined ||
+          typeof snippet.category === "string") &&
+        (snippet.tags === undefined ||
+          (Array.isArray(snippet.tags) &&
+            snippet.tags.every((tag) => typeof tag === "string"))) &&
+        (snippet.is_favorite === undefined ||
+          typeof snippet.is_favorite === "boolean")
+      );
+    });
+
+    if (validSnippets.length === 0) {
+      showAlert("No valid snippets found in this file.");
+      return;
+    }
+
+    const existingKeys = new Set(
+      snippets.map((snippet) =>
+        JSON.stringify([
+          snippet.title.trim().toLowerCase(),
+          snippet.language.trim().toLowerCase(),
+          snippet.code.trim(),
+        ]),
+      ),
+    );
+
+    const uniqueSnippets = validSnippets.filter((item: unknown) => {
+      const snippet = item as Record<string, unknown>;
+
+      const key = JSON.stringify([
+        (snippet.title as string).trim().toLowerCase(),
+        (snippet.language as string).trim().toLowerCase(),
+        (snippet.code as string).trim(),
+      ]);
+
+      if (existingKeys.has(key)) return false;
+
+      existingKeys.add(key);
+      return true;
+    });
+
+    const skippedCount = validSnippets.length - uniqueSnippets.length;
+
+    if (uniqueSnippets.length === 0) {
+      showAlert(
+        `No new snippets to import. ${skippedCount} duplicate snippet(s) skipped.`,
+      );
+      return;
+    }
+
+    const confirmed = await showAppDialog({
+      title: "Import snippets?",
+      message: `Import ${uniqueSnippets.length} new snippet(s)? ${skippedCount} duplicate snippet(s) will be skipped.`,
+      variant: "confirm",
+      confirmText: "Import",
+      cancelText: "Cancel",
+    });
+
+    if (!confirmed) return;
+
+    const records = uniqueSnippets.map((item: unknown) => {
+      const snippet = item as Record<string, unknown>;
+
+      return {
+        user_id: currentUserId,
+        title: (snippet.title as string).trim(),
+        description: snippet.description as string,
+        language: snippet.language as string,
+        code: snippet.code as string,
+        category:
+          typeof snippet.category === "string" && snippet.category.trim()
+            ? snippet.category.trim()
+            : "General",
+        tags: Array.isArray(snippet.tags)
+          ? [
+              ...new Set(
+                (snippet.tags as string[])
+                  .map((tag) => tag.trim().replace(/^#+/, "").toLowerCase())
+                  .filter(Boolean),
+              ),
+            ]
+          : [],
+        is_favorite: snippet.is_favorite === true,
+      };
+    });
+
+    const { error } = await supabase.from("user_snippets").insert(records);
+
+    if (error) {
+      console.error("Failed to import snippets:", error.message);
+      await showAlert("Import failed. Please check the file and try again.");
+      return;
+    }
+
+    await loadSnippets();
+    await showAlert(
+      `Successfully imported ${records.length} snippet(s). ${skippedCount} duplicate(s) skipped.`,
+    );
+  }
+
+  function exportSnippets() {
+    if (snippets.length === 0) {
+      void showAlert("There are no snippets to export.");
+      return;
+    }
+
+    const exportData = {
+      app: "XVault",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      snippets: snippets.map((snippet) => ({
+        title: snippet.title,
+        description: snippet.description,
+        language: snippet.language,
+        code: snippet.code,
+        category: snippet.category || "General",
+        tags: snippet.tags ?? [],
+        is_favorite: snippet.is_favorite ?? false,
+      })),
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], {
+      type: "application/json;charset=utf-8",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `xvault-snippets-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSelectedSnippets() {
+    const selectedSnippets = snippets.filter((snippet) =>
+      selectedSnippetIds.has(snippet.id),
+    );
+
+    if (selectedSnippets.length === 0) {
+      void showAlert("Please select at least one snippet to export.");
+      return;
+    }
+
+    const exportData = {
+      app: "XVault",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      snippets: selectedSnippets.map((snippet) => ({
+        title: snippet.title,
+        description: snippet.description,
+        language: snippet.language,
+        code: snippet.code,
+        category: snippet.category || "General",
+        tags: snippet.tags ?? [],
+        is_favorite: snippet.is_favorite ?? false,
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `xvault-selected-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function toggleSelectionMode() {
+    selectionMode = !selectionMode;
+
+    if (!selectionMode) {
+      selectedSnippetIds.clear();
+    }
+
+    document
+      .querySelectorAll<HTMLElement>(".snippet-select")
+      .forEach((label) => {
+        label.hidden = !selectionMode;
+      });
+
+    document
+      .querySelectorAll<HTMLInputElement>(".snippet-select-checkbox")
+      .forEach((checkbox) => {
+        checkbox.checked = selectedSnippetIds.has(
+          checkbox.dataset.selectSnippet ?? "",
+        );
+      });
+
+    updateSelectionToolbar();
+  }
+
+  function toggleSelectAllFromToolbar() {
+    const selectAll = document.querySelector<HTMLInputElement>(
+      "#select-all-snippets-checkbox",
+    );
+
+    if (!selectAll) return;
+
+    document
+      .querySelectorAll<HTMLInputElement>(".snippet-select-checkbox")
+      .forEach((checkbox) => {
+        const id = checkbox.dataset.selectSnippet;
+
+        if (!id) return;
+
+        if (selectAll.checked) {
+          selectedSnippetIds.add(id);
+        } else {
+          selectedSnippetIds.delete(id);
+        }
+
+        checkbox.checked = selectedSnippetIds.has(id);
+      });
+
+    updateSelectionToolbar();
+  }
+
+  function renderSnippets() {
+    if (!list || !emptyState) return;
+    updateSnippetStats();
+
+    const query = searchInput?.value.trim().toLowerCase() ?? "";
+    const selectedCategory = categoryFilter?.value ?? "";
+    const selectedFavorite = favoriteFilter?.value ?? "all";
+    const sortOrder = sortFilter?.value ?? "updated-desc";
+
+    const filtered = snippets.filter((snippet) => {
+      const matchesCategory =
+        !selectedCategory ||
+        (snippet.category || "General") === selectedCategory;
+
+      const searchableValues = [
+        snippet.title,
+        snippet.description,
+        snippet.language,
+        snippet.code,
+        snippet.category || "General",
+        ...(snippet.tags ?? []),
+      ];
+
+      const matchesSearch = searchableValues.some((value) =>
+        (value ?? "").toLowerCase().includes(query),
+      );
+      const matchesFavorite =
+        selectedFavorite !== "favorites" || snippet.is_favorite === true;
+
+      return matchesCategory && matchesSearch && matchesFavorite;
+    });
+
+    filtered.sort((a, b) => {
+      switch (sortOrder) {
+        case "updated-asc":
+          return (
+            new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+          );
+
+        case "title-asc":
+          return a.title.localeCompare(b.title, undefined, {
+            sensitivity: "base",
+          });
+
+        case "title-desc":
+          return b.title.localeCompare(a.title, undefined, {
+            sensitivity: "base",
+          });
+
+        case "updated-desc":
+        default:
+          return (
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          );
+      }
+    });
+
+    list.innerHTML = filtered
+      .map(
+        (snippet) => `
+      <article class="snippet-item">
+        <label class="snippet-select" hidden>
+          <input
+            type="checkbox"
+            class="snippet-select-checkbox"
+            data-select-snippet="${snippet.id}"
+            aria-label="Select ${escapeHtml(snippet.title)}"
+            ${selectedSnippetIds.has(snippet.id) ? "checked" : ""}
+          />
+          <span>Select</span>
+        </label>
+        <div class="snippet-item-header">
+          <div>
+            <h2>${escapeHtml(snippet.title)}</h2>
+            <span class="language">${escapeHtml(snippet.language)}</span>
+            
+            <div class="snippet-labels">
+              <span class="category-badge">
+                ${escapeHtml(snippet.category || "General")}
+              </span>
+              ${(snippet.tags ?? [])
+                .map(
+                  (tag) => `<span class="tag-badge">#${escapeHtml(tag)}</span>`,
+                )
+                .join("")}
+            </div>
+
+            <p class="snippet-updated">
+              Updated ${new Date(snippet.updated_at).toLocaleDateString(
+                "en-GB",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                },
+              )}
+            </p>
+          </div>
+
+          <div class="item-actions">
+            <button
+              type="button"
+              class="favorite-button ${snippet.is_favorite ? "is-favorite" : ""}"
+              data-action="favorite"
+              data-id="${snippet.id}"
+              aria-label="${snippet.is_favorite ? "Remove from favorites" : "Add to favorites"}"
+              title="${snippet.is_favorite ? "Remove from favorites" : "Add to favorites"}"
+            >
+              ${snippet.is_favorite ? "★" : "☆"}
+            </button>
+            <button type="button" data-edit="${snippet.id}">Edit</button>
+            <button type="button" data-delete="${snippet.id}">Delete</button>
+          </div>
+        </div>
+
+        <p>${escapeHtml(snippet.description || "No description")}</p>
+
+        <div class="snippet-code-header">
+          <span>CODE</span>
+          <button
+            type="button"
+            data-copy="${snippet.id}"
+            aria-label="Copy code for ${escapeHtml(snippet.title)}"
+          >
+            Copy code
+          </button>
+        </div>
+
+        <pre><code data-highlight-code="true" data-language="${escapeHtml(snippet.language)}">${escapeHtml(snippet.code)}</code></pre>
+      </article>
+    `,
+      )
+      .join("");
+
+    list.querySelectorAll<HTMLElement>(".snippet-select").forEach((label) => {
+      label.hidden = !selectionMode;
+    });
+
+    updateSelectionToolbar();
+
+    emptyState.hidden = filtered.length > 0;
+    list.hidden = filtered.length === 0;
+    void highlightSnippetCards();
+
+    const emptyTitle = emptyState.querySelector("h2");
+    const emptyDescription = emptyState.querySelector("p");
+
+    if (emptyTitle && emptyDescription) {
+      if (snippets.length === 0) {
+        emptyTitle.textContent = "No personal snippets yet.";
+        emptyDescription.textContent =
+          "Create your first snippet to start your collection.";
+      } else {
+        emptyTitle.textContent = "No matching snippets.";
+        emptyDescription.textContent = "Try a different search term.";
+      }
+    }
+  }
+
+  async function toggleFavorite(id: string) {
+    if (!currentUserId) return;
+
+    const snippet = snippets.find((item) => item.id === id);
+    if (!snippet) return;
+
+    const nextFavorite = !snippet.is_favorite;
+
+    const { error } = await supabase
+      .from("user_snippets")
+      .update({ is_favorite: nextFavorite })
+      .eq("id", id)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.error("Failed to update favorite:", error);
+      await showAlert("Failed to update favorite. Please try again.");
+      return;
+    }
+
+    snippet.is_favorite = nextFavorite;
+    renderSnippets();
+  }
+
+  function openEditor(snippet?: UserSnippet) {
+    if (
+      !dialog ||
+      !snippetForm ||
+      !titleInput ||
+      !descriptionInput ||
+      !languageInput ||
+      !categoryInput ||
+      !tagsInput ||
+      !codeInput ||
+      !dialogTitle ||
+      !formStatus ||
+      !saveButton ||
+      !preview
+    ) {
+      return;
+    }
+
+    snippetForm.reset();
+    editingId = snippet?.id ?? null;
+
+    dialogTitle.textContent = snippet ? "Edit snippet" : "New snippet";
+    saveButton.textContent = snippet ? "Save changes" : "Save snippet";
+
+    titleInput.value = snippet?.title ?? "";
+    descriptionInput.value = snippet?.description ?? "";
+    languageInput.value = snippet?.language ?? "javascript";
+    categoryInput.value = snippet?.category ?? "General";
+    tagsInput.value = (snippet?.tags ?? []).join(", ");
+    codeInput.value = snippet?.code ?? "";
+
+    formStatus.textContent = "";
+    preview.innerHTML = "<pre><code>Preparing preview...</code></pre>";
+
+    dialog.showModal();
+    void updatePreview();
+
+    titleInput.focus();
+  }
+
+  function closeEditor() {
+    if (!dialog || !snippetForm || !formStatus) return;
+
+    clearTimeout(previewTimer);
+    previewRequest++;
+
+    dialog.close();
+    snippetForm.reset();
+    editingId = null;
+    formStatus.textContent = "";
+  }
+
+  async function initialize() {
+    try {
+      const { data, error } = await getAuthenticatedUser();
+
+      if (error || !data.user) {
+        window.location.replace("/login");
+        return;
+      }
+
+      currentUserId = data.user.id;
+
+      if (workspace) workspace.hidden = false;
+
+      await loadSnippets();
+    } catch (error) {
+      console.error("Failed to initialize the snippet workspace:", error);
+      if (status) {
+        const reason =
+          error instanceof Error ? ` (${error.message})` : "";
+        status.textContent =
+          `Could not verify your session${reason}. Check your connection and refresh the page.`;
+      }
+    }
+  }
+
+  void initialize();
+
+  searchInput?.addEventListener("input", renderSnippets);
+
+  categoryFilter?.addEventListener("change", renderSnippets);
+  favoriteFilter?.addEventListener("change", renderSnippets);
+  sortFilter?.addEventListener("change", renderSnippets);
+
+  document
+    .querySelector<HTMLButtonElement>("#new-snippet-button")
+    ?.addEventListener("click", () => openEditor());
+
+  const importButton = document.querySelector<HTMLButtonElement>(
+    "#import-snippets-button",
+  );
+
+  const importFileInput = document.querySelector<HTMLInputElement>(
+    "#import-snippets-file",
+  );
+
+  importButton?.addEventListener("click", () => {
+    importFileInput?.click();
+  });
+
+  importFileInput?.addEventListener("change", async () => {
+    const file = importFileInput.files?.[0];
+    if (!file) return;
+
+    try {
+      await importSnippets(file);
+    } finally {
+      importFileInput.value = "";
+    }
+  });
+
+  document
+    .querySelector<HTMLButtonElement>("#export-snippets-button")
+    ?.addEventListener("click", exportSnippets);
+
+  document
+    .querySelector<HTMLButtonElement>("#export-selected-snippets-button")
+    ?.addEventListener("click", exportSelectedSnippets);
+
+  document
+    .querySelector<HTMLButtonElement>("#select-mode-button")
+    ?.addEventListener("click", toggleSelectionMode);
+
+  document
+    .querySelector<HTMLInputElement>("#select-all-snippets-checkbox")
+    ?.addEventListener("change", toggleSelectAllFromToolbar);
+
+  document
+    .querySelector<HTMLButtonElement>("#cancel-selection-button")
+    ?.addEventListener("click", () => {
+      selectionMode = false;
+      selectedSnippetIds.clear();
+
+      document
+        .querySelectorAll<HTMLElement>(".snippet-select")
+        .forEach((label) => {
+          label.hidden = true;
+        });
+
+      document
+        .querySelectorAll<HTMLInputElement>(".snippet-select-checkbox")
+        .forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+
+      updateSelectionToolbar();
+    });
+
+  list?.addEventListener("change", (event) => {
+    const target = event.target;
+
+    if (
+      !(target instanceof HTMLInputElement) ||
+      !target.matches(".snippet-select-checkbox")
+    ) {
+      return;
+    }
+
+    const id = target.dataset.selectSnippet;
+
+    if (!id) return;
+
+    if (target.checked) {
+      selectedSnippetIds.add(id);
+    } else {
+      selectedSnippetIds.delete(id);
+    }
+
+    updateSelectionToolbar();
+  });
+
+  document
+    .querySelector<HTMLButtonElement>("#close-dialog")
+    ?.addEventListener("click", closeEditor);
+
+  document
+    .querySelector<HTMLButtonElement>("#cancel-dialog")
+    ?.addEventListener("click", closeEditor);
+
+  codeInput?.addEventListener("input", schedulePreview);
+  languageInput?.addEventListener("change", schedulePreview);
+
+  dialog?.addEventListener("click", (event) => {
+    if (event.target === dialog) closeEditor();
+  });
+
+  list?.addEventListener("click", async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof HTMLButtonElement)) return;
+    const copyId = target.dataset.copy;
+
+    if (copyId) {
+      const snippet = snippets.find((item) => item.id === copyId);
+      if (!snippet) return;
+
+      try {
+        await navigator.clipboard.writeText(snippet.code);
+
+        const originalText = target.textContent;
+        target.textContent = "Copied!";
+        target.disabled = true;
+        showToast("Code copied to clipboard.");
+
+        window.setTimeout(() => {
+          if (target.isConnected) {
+            target.textContent = originalText;
+            target.disabled = false;
+          }
+        }, 1500);
+      } catch (error) {
+        console.error("Failed to copy snippet:", error);
+        await showAlert("Could not copy the code. Please copy it manually.");
+      }
+
+      return;
+    }
+
+    const favoriteId = target.dataset.id;
+    const action = target.dataset.action;
+
+    if (action === "favorite" && favoriteId) {
+      await toggleFavorite(favoriteId);
+      return;
+    }
+
+    const editId = target.dataset.edit;
+    const deleteId = target.dataset.delete;
+
+    if (editId) {
+      const snippet = snippets.find((item) => item.id === editId);
+
+      if (snippet) openEditor(snippet);
+      return;
+    }
+
+    if (deleteId) {
+      const snippet = snippets.find((item) => item.id === deleteId);
+
+      if (!snippet || !currentUserId) return;
+
+      const confirmed = await showConfirm(
+        `Delete "${snippet.title}"? This action cannot be undone.`,
+      );
+
+      if (!confirmed) return;
+
+      target.disabled = true;
+
+      const { error } = await supabase
+        .from("user_snippets")
+        .delete()
+        .eq("id", deleteId)
+        .eq("user_id", currentUserId);
+
+      if (error) {
+        console.error("Failed to delete snippet:", error.message);
+        await showAlert("Failed to delete snippet. Please try again.");
+        target.disabled = false;
+        return;
+      }
+
+      snippets = snippets.filter((item) => item.id !== deleteId);
+      selectedSnippetIds.delete(deleteId);
+      renderSnippets();
+    }
+  });
+
+  snippetForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (
+      !currentUserId ||
+      !titleInput ||
+      !descriptionInput ||
+      !languageInput ||
+      !categoryInput ||
+      !tagsInput ||
+      !codeInput ||
+      !formStatus ||
+      !saveButton
+    ) {
+      return;
+    }
+
+    const wasEditing = Boolean(editingId);
+    const snippetId = editingId;
+
+    const payload = {
+      title: titleInput.value.trim(),
+      description: descriptionInput.value.trim(),
+      language: languageInput.value,
+      category: categoryInput.value,
+      tags: [
+        ...new Set(
+          tagsInput.value
+            .split(",")
+            .map((tag) => tag.trim().replace(/^#+/, "").toLowerCase())
+            .filter(Boolean),
+        ),
+      ],
+      code: codeInput.value,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!payload.title || !payload.code.trim()) {
+      formStatus.textContent = "Title and code are required.";
+      return;
+    }
+
+    saveButton.disabled = true;
+    formStatus.textContent = "Saving snippet...";
+
+    try {
+      if (snippetId) {
+        const { error } = await supabase
+          .from("user_snippets")
+          .update(payload)
+          .eq("id", snippetId)
+          .eq("user_id", currentUserId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("user_snippets").insert({
+          ...payload,
+          user_id: currentUserId,
+        });
+
+        if (error) throw error;
+      }
+
+      closeEditor();
+      await loadSnippets();
+      await showAlert(
+        wasEditing
+          ? "Your snippet has been updated successfully."
+          : "Your snippet has been created successfully.",
+        "success",
+        wasEditing ? "Changes saved" : "Snippet created",
+      );
+    } catch (error) {
+      console.error("Failed to save snippet:", error);
+      formStatus.textContent = "Failed to save. Please try again.";
+    } finally {
+      saveButton.disabled = false;
+      saveButton.textContent = wasEditing ? "Save changes" : "Save snippet";
+    }
+  });
+
+</script>
+
+<script is:inline>
+  let startupError = "";
+
+  window.addEventListener("error", (event) => {
+    if (event.message) startupError = event.message;
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    startupError =
+      event.reason instanceof Error
+        ? event.reason.message
+        : String(event.reason);
+  });
+
+  window.setTimeout(() => {
+    const status = document.querySelector("#page-status");
+    if (status?.textContent?.trim() === "Checking your session...") {
+      status.textContent = startupError
+        ? `Workspace startup failed: ${startupError}`
+        : "Workspace startup did not run. Check the browser console and reload the page.";
+    }
+  }, 20_000);
+</script>
+
+<style is:global>
+  .workspace {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1180px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 0 32px 80px;
+  }
+
+  .topbar {
+    min-height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    color: var(--text);
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    text-decoration: none;
+  }
+
+  .brand span {
+    color: var(--accent);
+    margin-left: -10px;
+  }
+  .heading h1 span {
+    color: var(--accent);
+  }
+
+  .topbar nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .topbar nav a {
+    padding: 9px 12px;
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: none;
+    transition:
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .topbar nav a:hover {
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  .heading {
+    padding: 58px 0 28px;
+  }
+
+  .eyebrow {
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .heading .eyebrow {
+    display: block;
+    margin-bottom: 14px;
+  }
+
+  .heading h1 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(38px, 6vw, 60px);
+    line-height: 1.1;
+    letter-spacing: -2px;
+  }
+
+  .description,
+  .snippet-item > p,
+  .empty-state p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .heading .description {
+    margin-top: 14px;
+    font-size: 14px;
+  }
+
+  #page-status {
+    min-height: 18px;
+    margin: 0 0 12px;
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 22px 0 28px;
+  }
+
+  .search-wrapper {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    transition: border-color 160ms ease;
+  }
+
+  .search-wrapper:focus-within {
+    border-color: var(--accent);
+  }
+
+  .search-wrapper svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  input,
+  button {
+    font: inherit;
+  }
+
+  input {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 13px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .search-wrapper input {
+    width: 100%;
+    padding: 14px 0;
+    border: 0;
+    background: transparent;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+  }
+
+  .search-wrapper input:focus {
+    border-color: transparent;
+  }
+  .search-wrapper input:focus-visible {
+    outline: none;
+  }
+
+  button {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+  }
+
+  #new-snippet-button {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 17px;
+    border-color: var(--accent);
+    border-radius: 8px;
+    background: var(--accent);
+    color: #101110;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  #new-snippet-button:hover,
+  #save-snippet-button:hover {
+    opacity: 0.88;
+  }
+
+  #new-snippet-button span {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .snippet-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 18px;
+  }
+
+  .snippet-item {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 21px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface);
+    transition:
+      border-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .snippet-item:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    transform: translateY(-2px);
+  }
+
+  .snippet-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .snippet-item-header > div:first-child {
+    min-width: 0;
+  }
+
+  .snippet-item h2 {
+    margin: 0 0 11px;
+    font-size: 17px;
+    line-height: 1.45;
+    letter-spacing: -0.35px;
+    overflow-wrap: anywhere;
+  }
+
+  .language {
+    display: inline-block;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  .snippet-updated {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .item-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .item-actions button {
+    padding: 7px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .item-actions button:hover {
+    color: var(--accent);
+  }
+
+  .item-actions button:last-child:hover {
+    border-color: #b96b6b;
+    color: #e38b8b;
+  }
+
+  .snippet-item > p {
+    margin: 16px 0;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+  }
+
+  .snippet-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 7px 7px 0 0;
+    background: #111411;
+  }
+
+  .snippet-code-header span {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .snippet-code-header button {
+    padding: 6px 9px;
+    border-color: #353a35;
+    border-radius: 5px;
+    background: #1b201b;
+    font-size: 11px;
+  }
+
+  .snippet-code-header button:hover {
+    color: var(--accent);
+  }
+
+  .snippet-item .snippet-code-header + pre {
+    box-sizing: border-box;
+    width: 100%;
+    max-height: 280px;
+    margin: 0;
+    padding: 15px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 0 0 7px 7px;
+    background: #0b0d0b;
+    color: var(--text);
+    font-family: "DM Mono", monospace;
+    font-size: 11px;
+    line-height: 1.8;
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  .snippet-item pre.shiki {
+    background: #0b0d0b !important;
+  }
+
+  .snippet-item pre code {
+    font-family: "DM Mono", monospace;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .empty-state {
+    padding: 48px 24px;
+    border: 1px dashed var(--border);
+    border-radius: 11px;
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .empty-state h2 {
+    margin-top: 0;
+    font-size: 18px;
+  }
+
+  .empty-state p {
+    margin-bottom: 0;
+  }
+
+  /* Snippet editor dialog */
+  .snippet-dialog {
+    box-sizing: border-box;
+    width: min(680px, calc(100% - 32px));
+    max-width: 680px;
+    max-height: 85vh;
+    padding: 0;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 24px 90px rgb(0 0 0 / 30%);
+  }
+
+  .snippet-dialog::backdrop {
+    background: rgb(0 0 0 / 75%);
+    backdrop-filter: blur(4px);
+  }
+
+  #snippet-form {
+    display: grid;
+    gap: 11px;
+    padding: 28px;
+  }
+
+  .dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    padding-bottom: 17px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dialog-header .eyebrow {
+    margin: 0 0 8px;
+  }
+
+  .dialog-header h2 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 25px;
+    letter-spacing: -0.7px;
+  }
+
+  #close-dialog {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 18px;
+  }
+
+  #snippet-form label {
+    margin-top: 8px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  #snippet-form input,
+  #snippet-form select,
+  #snippet-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+
+  #snippet-form input:focus,
+  #snippet-form select:focus,
+  #snippet-form textarea:focus {
+    border-color: var(--accent);
+  }
+
+  #snippet-form select {
+    cursor: pointer;
+  }
+
+  #snippet-form textarea {
+    min-height: 220px;
+    resize: vertical;
+    font-family: "DM Mono", monospace;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+
+  .preview-heading {
+    margin-top: 12px;
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .snippet-preview {
+    min-height: 50px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: #0b0d0b;
+  }
+
+  .snippet-preview pre {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: "DM Mono", monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+
+  .snippet-preview code {
+    font-family: inherit;
+  }
+
+  #form-status {
+    min-height: 18px;
+    margin: 4px 0;
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  #save-snippet-button {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #101110;
+  }
+
+  #save-snippet-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 800px) {
+    .snippet-list {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .snippet-item:hover {
+      transform: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .workspace {
+      padding: 0 18px 44px;
+    }
+
+    .topbar {
+      align-items: flex-start;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 18px 0;
+    }
+
+    .topbar nav {
+      gap: 3px;
+    }
+
+    .topbar nav a {
+      padding: 8px;
+      font-size: 11px;
+    }
+
+    .heading {
+      padding: 40px 0 24px;
+    }
+
+    .heading h1 {
+      font-size: clamp(36px, 10vw, 48px);
+      letter-spacing: -1.8px;
+    }
+
+    .heading .description {
+      font-size: 13px;
+    }
+
+    .toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    #new-snippet-button {
+      width: 100%;
+    }
+
+    .snippet-item {
+      padding: 16px;
+    }
+
+    .snippet-item-header {
+      flex-direction: column;
+    }
+
+    .item-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    #snippet-form {
+      padding: 20px;
+    }
+
+    .dialog-header h2 {
+      font-size: 22px;
+    }
+
+    .dialog-actions button {
+      flex: 1;
+    }
+  }
+
+  /* Category and tags */
+
+  #snippet-form .field-hint {
+    margin: -4px 0 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .snippet-labels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  #category-filter:hover,
+  #category-filter:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  .category-badge,
+  .tag-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+  }
+
+  .category-badge {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+  }
+
+  .tag-badge {
+    color: var(--muted);
+  }
+
+  @media (max-width: 600px) {
+    #category-filter {
+      width: 100%;
+    }
+  }
+  .favorite-button {
+    min-width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 21px;
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
+  }
+
+  .favorite-button:hover,
+  .favorite-button.is-favorite {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  /* Favorite filter */
+
+  #favorite-filter:hover,
+  #favorite-filter:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  @media (max-width: 600px) {
+    #favorite-filter {
+      width: 100%;
+    }
+  }
+  /* Sorting filter */
+
+  #sort-filter:hover,
+  #sort-filter:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  @media (max-width: 600px) {
+    #sort-filter {
+      width: 100%;
+    }
+  }
+
+  /* Snippet statistics */
+  .snippet-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    transition:
+      border-color 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .stat-card strong {
+    color: var(--text);
+    font-size: clamp(24px, 3vw, 32px);
+    line-height: 1.2;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-description {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  @media (max-width: 800px) {
+    .snippet-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 16px;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .snippet-stats {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  #export-snippets-button {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  #export-snippets-button:hover {
+    border-color: var(--accent);
+  }
+
+  #import-snippets-button {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  #import-snippets-button:hover {
+    border-color: var(--accent);
+  }
+
+  /* Snippet selection */
+  .snippet-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .snippet-select-checkbox {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  #select-all-snippets-button,
+  #export-selected-snippets-button {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  #select-all-snippets-button:hover,
+  #export-selected-snippets-button:hover {
+    border-color: var(--accent);
+  }
+
+  /* Toolbar layout */
+
+  #category-filter,
+  #favorite-filter,
+  #sort-filter {
+    min-width: 140px;
+    max-width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar-actions button,
+  .selection-toolbar button {
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .toolbar-actions button:hover,
+  .selection-toolbar button:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .toolbar-actions .primary-action {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--background);
+  }
+
+  .selection-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 13px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .selection-toolbar[hidden] {
+    display: none;
+  }
+
+  .select-all-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .select-all-label input,
+  .snippet-select-checkbox {
+    accent-color: var(--accent);
+  }
+
+  #selection-count {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .selection-toolbar button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 700px) {
+    .toolbar {
+      align-items: stretch;
+    }
+
+    .search-wrapper,
+    #category-filter,
+    #favorite-filter,
+    #sort-filter {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .toolbar-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+    }
+
+    .toolbar-actions button {
+      width: 100%;
+    }
+
+    .selection-toolbar {
+      gap: 12px;
+    }
+  }
+
+</style>

@@ -1,0 +1,206 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Create Account — XVault">
+  <main class="auth-page">
+    <section class="auth-card">
+      <a class="brand" href="/">XVault<span>.</span></a>
+      <p class="eyebrow">YOUR PERSONAL CODE LIBRARY</p>
+      <h1>Create your account</h1>
+      <p class="description">
+        Sign up to save your own snippets and bookmarks.
+      </p>
+
+      <form id="register-form">
+        <label for="email">Email address</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="At least 8 characters"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        />
+
+        <button type="submit" id="register-button"> Create account </button>
+
+        <p id="auth-message" role="status" aria-live="polite"></p>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account? <a href="/login">Sign in</a>
+      </p>
+    </section>
+  </main>
+
+  <script>
+    import { supabase } from "../lib/supabase";
+
+    const form = document.querySelector<HTMLFormElement>("#register-form");
+    const button =
+      document.querySelector<HTMLButtonElement>("#register-button");
+    const message = document.querySelector<HTMLElement>("#auth-message");
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form || !button || !message) return;
+
+      const email = new FormData(form).get("email")?.toString().trim() ?? "";
+      const password = new FormData(form).get("password")?.toString() ?? "";
+
+      button.disabled = true;
+      button.textContent = "Creating account...";
+      message.textContent = "";
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
+
+        if (error) throw error;
+
+        message.textContent = data.session
+          ? "Account created. Redirecting..."
+          : "Account created. Check your email to confirm your account.";
+
+        if (data.session) {
+          window.location.assign("/");
+        }
+      } catch (error) {
+        message.textContent =
+          error instanceof Error
+            ? error.message
+            : "Unable to create account. Please try again.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Create account";
+      }
+    });
+  </script>
+
+  <style>
+    .auth-page {
+      min-height: 80vh;
+      display: grid;
+      place-items: center;
+      padding: 48px 20px;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 36px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #121412;
+    }
+
+    .brand {
+      color: #f1f1e9;
+      font-size: 25px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: #b6d96c;
+    }
+
+    .eyebrow {
+      margin-top: 32px;
+      color: #b6d96c;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    h1 {
+      margin: 12px 0;
+      color: #f1f1e9;
+      font-size: 30px;
+    }
+
+    .description,
+    .auth-switch {
+      color: #a2a69d;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    form {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    label {
+      color: #e3e5dc;
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #191c18;
+      color: #f1f1e9;
+      font: inherit;
+    }
+
+    button {
+      padding: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: #b6d96c;
+      color: #171a13;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #auth-message {
+      color: #b6d96c;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .auth-switch {
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .auth-switch a {
+      color: #b6d96c;
+    }
+
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: 26px 20px;
+      }
+    }
+  </style>
+</BaseLayout>

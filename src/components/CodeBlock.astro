@@ -1,0 +1,42 @@
+---
+interface Props {
+  code: string;
+  language: string;
+  title?: string;
+  html: string;
+}
+
+const { code, language, title = "Copy code", html } = Astro.props;
+---
+
+<div class="code-container">
+  <div class="code-toolbar">
+    <span class="code-indicator"></span>
+    <span>{language.toLowerCase()}</span>
+
+    <button
+      class="copy-button"
+      type="button"
+      data-copy={code}
+      aria-label={`Copy ${title}`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect
+          x="8"
+          y="8"
+          width="11"
+          height="12"
+          rx="2"
+          stroke="currentColor"
+          stroke-width="1.6"></rect>
+        <path
+          d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"
+          stroke="currentColor"
+          stroke-width="1.6"></path>
+      </svg>
+      <span>Copy</span>
+    </button>
+  </div>
+
+  <div class="code-content" set:html={html} />
+</div>

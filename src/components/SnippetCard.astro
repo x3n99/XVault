@@ -1,0 +1,168 @@
+---
+import CodeBlock from "./CodeBlock.astro";
+
+interface Props {
+  slug: string;
+  title: string;
+  description: string;
+  language: string;
+  category: string;
+  code: string;
+  html: string;
+  index: number;
+}
+
+const { slug, title, description, language, category, code, html, index } =
+  Astro.props;
+---
+
+<article
+  class="snippet-card"
+  data-slug={slug}
+  data-language={language}
+  data-search={`${title} ${description} ${language} ${category} ${code}`.toLowerCase()}
+>
+  <div class="card-header">
+    <div class="card-title-group">
+      <span class="card-index">
+        {String(index + 1).padStart(2, "0")}
+      </span>
+      <h3>
+        <a class="snippet-title-link" href={`/snippets/${slug}`}>
+          {title}
+        </a>
+      </h3>
+    </div>
+
+    <div class="card-header-actions">
+      <button
+        class="bookmark-button"
+        type="button"
+        data-bookmark={slug}
+        aria-label={`Bookmark ${title}`}
+        aria-pressed="false"
+        title="Bookmark snippet"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-4-6 4V4.75Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
+
+      <span class="language-badge">{language}</span>
+    </div>
+  </div>
+
+  <p class="card-description">{description}</p>
+
+  <CodeBlock code={code} language={language} title={title} html={html} />
+
+  <div class="card-footer">
+    <span>{category}</span>
+    <a
+      class="card-arrow"
+      href={`/snippets/${slug}`}
+      aria-label={`View ${title} details`}
+    >
+      View details ↗
+    </a>
+  </div>
+</article>
+
+<script>
+  import { supabase } from "../lib/supabase";
+  import { showAlert } from "../lib/notifications";
+
+  let bookmarks: string[] = [];
+
+  function updateBookmarkButtons() {
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-bookmark]")
+      .forEach((button) => {
+        const slug = button.dataset.bookmark;
+        if (!slug) return;
+
+        const saved = bookmarks.includes(slug);
+        button.setAttribute("aria-pressed", String(saved));
+        button.title = saved ? "Remove bookmark" : "Bookmark snippet";
+      });
+  }
+
+  async function loadBookmarks() {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      bookmarks = [];
+      updateBookmarkButtons();
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("user_bookmarks")
+      .select("snippet_slug");
+
+    if (error) {
+      console.error("Failed to load bookmarks:", error.message);
+      return;
+    }
+
+    bookmarks = data.map((item) => item.snippet_slug);
+    updateBookmarkButtons();
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-bookmark]")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const slug = button.dataset.bookmark;
+        if (!slug || button.disabled) return;
+
+        button.disabled = true;
+
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user) {
+            window.location.href = "/login";
+            return;
+          }
+
+          const saved = bookmarks.includes(slug);
+
+          const result = saved
+            ? await supabase
+                .from("user_bookmarks")
+                .delete()
+                .eq("user_id", user.id)
+                .eq("snippet_slug", slug)
+            : await supabase
+                .from("user_bookmarks")
+                .insert({ user_id: user.id, snippet_slug: slug });
+
+          if (result.error) throw result.error;
+
+          await loadBookmarks();
+          window.dispatchEvent(new Event("xvault-bookmarks-updated"));
+        } catch (error) {
+          console.error(error);
+          await showAlert("Bookmark gagal diperbarui. Coba lagi.", "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+
+  window.addEventListener("xvault-bookmarks-updated", () => {
+    void loadBookmarks();
+  });
+
+  void loadBookmarks();
+</script>

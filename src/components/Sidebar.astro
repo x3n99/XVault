@@ -1,0 +1,148 @@
+---
+interface Props {
+  categories: string[];
+  snippetCount: number;
+  currentPath?: string;
+}
+
+const { categories, snippetCount, currentPath = "/" } = Astro.props;
+---
+
+<header class="mobile-header">
+  <a class="brand mobile-brand" href="/" aria-label="XVault home">
+    <span class="brand-mark">X</span>
+    <span>XVault<span class="brand-period">.</span></span>
+  </a>
+  <a class="mobile-my-snippets" href="/my-snippets">My Snippets <span aria-hidden="true">↗</span></a>
+</header>
+
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="XVault home">
+    <span class="brand-mark">X</span>
+    <span>XVault<span class="brand-period">.</span></span>
+  </a>
+
+  <div class="side-label">WORKSPACE</div>
+
+  <nav class="side-nav" aria-label="Main navigation">
+    <a class:list={["nav-link", { active: currentPath === "/" }]} href="/">
+      <span class="nav-icon">⌘</span>
+      <span>Library</span>
+      <span class="nav-count" id="sidebar-snippet-count">{snippetCount}</span>
+    </a>
+
+    <a
+      class:list={["nav-link", { active: currentPath === "/favorites" }]}
+      href="/favorites"
+    >
+      <span class="nav-icon">♡</span>
+      <span>Favorites</span>
+      <span class="sidebar-favorites-count" data-favorites-count hidden>0</span>
+    </a>
+
+    <a
+      class:list={[
+        "nav-link",
+        {
+          active:
+            currentPath === "/categories" ||
+            currentPath.startsWith("/categories/"),
+        },
+      ]}
+      href="/categories"
+    >
+      <span class="nav-icon">▦</span>
+      <span>Categories</span>
+    </a>
+
+    <a
+      class:list={["nav-link", { active: currentPath === "/about" }]}
+      href="/about"
+    >
+      <span class="nav-icon">ⓘ</span>
+      <span>About</span>
+    </a>
+    <a
+      class:list={["nav-link", { active: currentPath === "/stats" }]}
+      href="/stats"
+    >
+      <span class="nav-icon">↗</span>
+      <span>Statistics</span>
+    </a>
+    <a
+      href="/search"
+      class:list={["nav-link", { active: currentPath === "/search" }]}
+    >
+      <span class="nav-icon">⌕</span>
+      <span>Search</span>
+      <kbd class="sidebar-search-shortcut">Ctrl K</kbd>
+    </a>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      Static library
+      <span class="version">v1.0</span>
+    </div>
+  </div>
+</aside>
+
+<script>
+  const BOOKMARK_KEY = "xvault-bookmarks";
+
+  function updateSnippetCount() {
+    const counter = document.querySelector<HTMLElement>(
+      "#sidebar-snippet-count",
+    );
+    if (!counter) return;
+
+    const baseCount = Number(counter.textContent) || 0;
+
+    try {
+      const saved = localStorage.getItem("xvault-imported-snippets");
+      const parsed = saved ? JSON.parse(saved) : [];
+      const importedCount = Array.isArray(parsed) ? parsed.length : 0;
+
+      counter.textContent = String(baseCount + importedCount);
+    } catch {
+      counter.textContent = String(baseCount);
+    }
+  }
+
+  updateSnippetCount();
+  window.addEventListener(
+    "xvault-imported-snippets-updated",
+    updateSnippetCount,
+  );
+
+  function updateFavoritesCount() {
+    const counters = document.querySelectorAll<HTMLElement>(
+      "[data-favorites-count]",
+    );
+
+    let count = 0;
+
+    try {
+      const saved = localStorage.getItem(BOOKMARK_KEY);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      if (Array.isArray(parsed)) {
+        count = new Set(
+          parsed.filter((item): item is string => typeof item === "string"),
+        ).size;
+      }
+    } catch {
+      count = 0;
+    }
+
+    counters.forEach((counter) => {
+      counter.textContent = String(count);
+      counter.hidden = count === 0;
+    });
+  }
+
+  updateFavoritesCount();
+  window.addEventListener("storage", updateFavoritesCount);
+  window.addEventListener("xvault-bookmarks-updated", updateFavoritesCount);
+</script>

@@ -1,0 +1,145 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="404 — Page Not Found | XVault"
+  description="The page you're looking for could not be found."
+>
+  <main class="error-page">
+    <a class="error-brand" href="/">XVault<span>.</span></a>
+
+    <section class="error-content">
+      <span class="error-code">ERROR / 404</span>
+      <h1>Lost in<br />the <span>void.</span></h1>
+      <p>
+        This page doesn't exist or may have been moved. Let's get you back to
+        your code library.
+      </p>
+
+      <a class="error-button" href="/">
+        <span>←</span>
+        Return to library
+      </a>
+    </section>
+
+    <footer class="error-footer">
+      <span>© {new Date().getFullYear()} XVault</span>
+      <span>NOT ALL PATHS LEAD SOMEWHERE ✳</span>
+    </footer>
+  </main>
+</BaseLayout>
+
+<style>
+  .error-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 8%;
+    background:
+      radial-gradient(
+        ellipse at 50% 45%,
+        rgb(197 244 103 / 5%),
+        transparent 55%
+      ),
+      var(--bg);
+  }
+
+  .error-brand {
+    width: fit-content;
+    padding: 28px 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .error-brand span,
+  .error-content h1 span {
+    color: var(--accent);
+  }
+
+  .error-content {
+    width: 100%;
+    max-width: 620px;
+    margin: auto;
+    padding: 80px 0;
+  }
+
+  .error-code {
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+  }
+
+  .error-content h1 {
+    margin: 24px 0 20px;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(58px, 10vw, 100px);
+    line-height: 0.98;
+    letter-spacing: -5px;
+  }
+
+  .error-content p {
+    max-width: 420px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.9;
+  }
+
+  .error-button {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 32px;
+    padding: 13px 18px;
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    background: var(--accent);
+    color: #101110;
+    font-size: 12px;
+    font-weight: 600;
+    transition: transform 160ms ease;
+  }
+
+  .error-button:hover {
+    transform: translateY(-2px);
+  }
+
+  .error-button span {
+    font-size: 17px;
+  }
+
+  .error-footer {
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 600px) {
+    .error-page {
+      padding: 0 22px;
+    }
+
+    .error-content h1 {
+      letter-spacing: -3px;
+    }
+
+    .error-footer {
+      align-items: flex-start;
+      justify-content: center;
+      flex-direction: column;
+      padding: 18px 0;
+    }
+  }
+</style>

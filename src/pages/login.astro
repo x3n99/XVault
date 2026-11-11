@@ -1,0 +1,206 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Sign In — XVault">
+  <main class="auth-page">
+    <section class="auth-card">
+      <a class="brand" href="/">XVault<span>.</span></a>
+      <p class="eyebrow">YOUR PERSONAL CODE LIBRARY</p>
+      <h1>Welcome back</h1>
+      <p class="description">
+        Sign in to access your personal snippets and bookmarks.
+      </p>
+
+      <form id="login-form">
+        <label for="email">Email address</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        />
+
+        <button type="submit" id="login-button">Sign in</button>
+        <p id="auth-message" role="status" aria-live="polite"></p>
+      </form>
+
+      <p class="auth-switch">
+        Don't have an account? <a href="/register">Create one</a>
+      </p>
+
+      <a class="back-link" href="/">← Back to library</a>
+    </section>
+  </main>
+
+  <script>
+    import { supabase } from "../lib/supabase";
+
+    const form = document.querySelector<HTMLFormElement>("#login-form");
+    const button = document.querySelector<HTMLButtonElement>("#login-button");
+    const message = document.querySelector<HTMLElement>("#auth-message");
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form || !button || !message) return;
+
+      const formData = new FormData(form);
+      const email = formData.get("email")?.toString().trim() ?? "";
+      const password = formData.get("password")?.toString() ?? "";
+
+      button.disabled = true;
+      button.textContent = "Signing in...";
+      message.textContent = "";
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        window.location.assign("/my-snippets");
+      } catch (error) {
+        message.textContent =
+          error instanceof Error
+            ? error.message
+            : "Unable to sign in. Please try again.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Sign in";
+      }
+    });
+  </script>
+
+  <style>
+    .auth-page {
+      min-height: 80vh;
+      display: grid;
+      place-items: center;
+      padding: 48px 20px;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 36px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #121412;
+    }
+
+    .brand {
+      color: #f1f1e9;
+      font-size: 25px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: #b6d96c;
+    }
+
+    .eyebrow {
+      margin-top: 32px;
+      color: #b6d96c;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    h1 {
+      margin: 12px 0;
+      color: #f1f1e9;
+      font-size: 30px;
+    }
+
+    .description,
+    .auth-switch {
+      color: #a2a69d;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    form {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    label {
+      color: #e3e5dc;
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #191c18;
+      color: #f1f1e9;
+      font: inherit;
+    }
+
+    button {
+      padding: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: #b6d96c;
+      color: #171a13;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #auth-message {
+      color: #f0a5a5;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .auth-switch {
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .auth-switch a,
+    .back-link {
+      color: #b6d96c;
+    }
+
+    .back-link {
+      display: block;
+      margin-top: 18px;
+      font-size: 13px;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: 26px 20px;
+      }
+    }
+  </style>
+</BaseLayout>
